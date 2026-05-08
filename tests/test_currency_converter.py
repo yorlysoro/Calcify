@@ -8,7 +8,7 @@ from domain.models import Currency, ExchangeRate
 # The following modules do not exist yet. TDD dictates we import them
 # and let the tests fail until we write the implementation.
 from domain.services import CurrencyConverter
-from domain.exceptions import InvalidExchangeRateError
+from domain.services import InvalidExchangeRateError
 
 
 @pytest.fixture
