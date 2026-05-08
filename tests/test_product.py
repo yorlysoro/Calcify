@@ -108,7 +108,11 @@ def test_product_rejects_invalid_base_currency(
     internal cost_currency_code raises a ValueError.
     """
     # Passing VES as base currency when the product is in USD
-    with pytest.raises(ValueError, match="Base currency provided does not match"):
+    # Using a raw string (r"") and wildcard (.*) to handle the dynamic f-string
+    # injection inside the ValueError message: "(VES)" and "(USD)".
+    # The regex explicitly checks the start and the core of the message
+    expected_error_pattern: str = r"Base currency provided \(.*\) does not match"
+    with pytest.raises(ValueError, match=expected_error_pattern):
         test_product.get_sale_price_in_currency(
             base_currency=ves,
             target_currency=ves,
