@@ -1,7 +1,7 @@
 from decimal import Decimal
 from uuid import UUID
 from datetime import datetime, timezone
-from sqlalchemy import String, Numeric, Boolean, ForeignKey, Integer, DateTime
+from sqlalchemy import String, Numeric, Boolean, ForeignKey, Integer, DateTime, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # <ORM> stands for Object-Relational Mapping
@@ -81,5 +81,28 @@ class TransactionModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), 
         default=lambda: datetime.now(timezone.utc), 
+        nullable=False
+    )
+
+class ConfigModel(Base):
+    """
+    ORM representation of the system's key-value configuration store.
+    
+    Used to store dynamic application settings (e.g., API keys, feature flags)
+    without requiring environment variable reloads.
+    """
+    __tablename__ = "configurations"
+
+    # The string key acts as the Primary Key for O(1) lookups and upsert logic
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    
+    # Text allows for practically unlimited string length (useful for JWTs or JSON)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    # Tracks both creation and modification time dynamically using UTC
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), 
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=False
     )

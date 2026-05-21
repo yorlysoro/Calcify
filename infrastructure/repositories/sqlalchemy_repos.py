@@ -3,8 +3,8 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from domain.models import Currency, Product
-from infrastructure.database.models import CurrencyModel, ProductModel
-from infrastructure.repositories.interfaces import ICurrencyRepository, IProductRepository
+from infrastructure.database.models import CurrencyModel, ProductModel, ConfigModel
+from infrastructure.repositories.interfaces import ICurrencyRepository, IProductRepository, IConfigRepository
 
 class SqlAlchemyCurrencyRepository(ICurrencyRepository):
     """
@@ -103,3 +103,43 @@ class SqlAlchemyProductRepository(IProductRepository):
             self._session.add(new_model)
             
         # The flush/commit operation is handled globally by a UnitOfWork, not here.
+
+class SqlAlchemyConfigRepository(IConfigRepository):
+    """
+    SQLAlchemy implementation of the configuration repository interface.
+    Handles the Key-Value storage mapping and Upsert mechanics.
+    """
+
+    def __init__(self, session: Session) -> None:
+        """
+        Injects the database session dependency.
+        
+        Args:
+            session (Session): The active SQLAlchemy database session.
+        """
+        self._session: Session = session
+
+    def get_value(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        """
+        Queries the database for a configuration key.
+        Time Complexity: O(1) due to Primary Key indexing.
+        """
+        model: Optional[ConfigModel] = self._session.query(ConfigModel).filter_by(key=key).first()
+        
+        if model is None:
+            return default
+            
+        return model.value
+
+    def set_value(self, key: str, value: str) -> None:
+        """
+        Executes an Upsert (Update or Insert) using SQLAlchemy's merge operation.
+        Note: The transaction must be committed by the caller (UnitOfWork).
+        """
+        # Create a detached instance representing the desired state
+        config_instance = ConfigModel(key=key, value=value)
+        
+        # session.merge() checks the Primary Key. 
+        # If 'key' exists, it updates 'value' and 'updated_at'. 
+        # If it doesn't exist, it queues an INSERT.
+        self._session.merge(config_instance)
