@@ -1,6 +1,7 @@
 from decimal import Decimal
 from uuid import UUID
-from sqlalchemy import String, Numeric, Boolean, ForeignKey
+from datetime import datetime, timezone
+from sqlalchemy import String, Numeric, Boolean, ForeignKey, Integer, DateTime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # <ORM> stands for Object-Relational Mapping
@@ -45,3 +46,40 @@ class ProductModel(Base):
     
     # Percentage margin strictly defined as Decimal
     margin_percentage: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+
+
+class TransactionModel(Base):
+    """
+    ORM representation of an inventory or financial Transaction.
+    
+    Acts as the single source of truth for historical ledger movements (IN/OUT).
+    Uses strict numeric typing for financial amounts.
+    """
+    __tablename__ = "transactions"
+
+    # <UUID> stands for Universally Unique Identifier.
+    # Essential for distributed systems and offline-first desktop apps.
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    
+    # <FK> stands for Foreign Key. Links the transaction to a specific Product.
+    product_id: Mapped[UUID] = mapped_column(ForeignKey("products.id"), nullable=False)
+    
+    # Restricting string length to 3 ('IN' or 'OUT') to save disk space.
+    transaction_type: Mapped[str] = mapped_column(String(3), nullable=False)
+    
+    # Inventory count must be whole numbers.
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    
+    # Financial precision required: Numeric mapping strictly to decimal.Decimal
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    
+    # The currency used at the exact moment of the transaction
+    currency_code: Mapped[str] = mapped_column(String(3), nullable=False)
+    
+    # We pass a callable lambda using timezone-aware UTC datetime. 
+    # datetime.utcnow() is deprecated in Python 3.12+.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), 
+        default=lambda: datetime.now(timezone.utc), 
+        nullable=False
+    )
