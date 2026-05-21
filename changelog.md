@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-21
+### Added
+- **Domain:** `Transaction` pure Python entity with strict timezone-aware validation and memory-efficient `slots=True` to prevent dictionary overhead.
+- **Infrastructure:** `TransactionModel` and `ConfigModel` ORM representations (`infrastructure/database/models.py`) utilizing strict SQLAlchemy 2.0 type hinting (`Mapped[T]`).
+- **Infrastructure:** Programmatic Alembic migration runner (`infrastructure/database/migrations.py`) that bypasses CLI requirements for standalone desktop deployments.
+- **Infrastructure:** Dynamic OS-agnostic database path resolution resolving to user-specific data directories (e.g., `%APPDATA%`, `~/.config`) avoiding read-only program file crashes.
+- **Repositories:** `SqlAlchemyTransactionRepository` and `SqlAlchemyConfigRepository` adapters enforcing strict Domain mapping boundaries and Upsert logic.
+- **Testing:** `conftest.py` setup featuring an in-memory SQLite `StaticPool` and nested transaction `SAVEPOINTS` for lightning-fast, zero-I/O test isolation.
+- **Testing:** Comprehensive TDD suites for all repositories verifying domain encapsulation, upsert mechanics, and foreign key integrity.
+
+### Fixed
+- **Testing:** Resolved TDD "Red Phase" `ImportError` by fully implementing the `Transaction` entity boundary.
+- **Infrastructure:** Mitigated SQLite's naive datetime driver bug by defensively injecting `timezone.utc` during ORM-to-Domain mapping, preventing catastrophic time-shift bugs in financial ledgers.
+
+
 ### Added
 
 - `schema.md` to document the Domain-Driven Design (DDD) entities and strictly typed models.
