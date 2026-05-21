@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 from uuid import UUID
-from domain.models import Currency, Product
+from domain.models import Currency, Product, Transaction
 
 # <ABC> stands for Abstract Base Class
 class ICurrencyRepository(ABC):
@@ -63,4 +63,24 @@ class IConfigRepository(ABC):
             key (str): The configuration identifier.
             value (str): The string value to store.
         """
+        pass
+
+class ITransactionRepository(ABC):
+    """
+    Interface defining the boundaries for transaction ledger persistence.
+    """
+    
+    @abstractmethod
+    def save(self, transaction: Transaction) -> None:
+        """Persists a new transaction or updates an existing one."""
+        pass
+
+    @abstractmethod
+    def get_by_id(self, transaction_id: UUID) -> Optional[Transaction]:
+        """Retrieves a single transaction by its unique ID."""
+        pass
+
+    @abstractmethod
+    def get_by_product_id(self, product_id: UUID) -> List[Transaction]:
+        """Retrieves the chronological transaction history for a specific product."""
         pass

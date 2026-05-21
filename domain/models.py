@@ -149,3 +149,41 @@ class Product:
             to_currency=target_currency,
             exchange_rate=current_rate,
         )
+
+@dataclass(slots=True)
+class Transaction:
+    """
+    Represents a movement of inventory (IN or OUT) coupled with its financial snapshot 
+    in the domain layer. Pure Python entity without external dependencies.
+    
+    Attributes:
+        id (UUID): The unique identifier for this ledger entry.
+        product_id (UUID): Reference to the product being moved.
+        transaction_type (str): Direction of movement ('IN' or 'OUT').
+        quantity (int): Number of units moved.
+        unit_price (Decimal): The exact financial cost/sale price per unit at the time.
+        currency_code (str): The currency used for this specific transaction.
+        created_at (datetime): A strict timezone-aware timestamp.
+    """
+    id: UUID
+    product_id: UUID
+    transaction_type: str
+    quantity: int
+    unit_price: Decimal
+    currency_code: str
+    created_at: datetime
+
+    def __post_init__(self) -> None:
+        """
+        Validates internal consistency to enforce domain-driven design constraints.
+        Prevents corrupt data objects from propagating through the system.
+        """
+        if not isinstance(self.unit_price, Decimal):
+            raise TypeError(f"Transaction.unit_price MUST be a Decimal, got {type(self.unit_price)}.")
+        
+        if self.transaction_type not in ("IN", "OUT"):
+            raise ValueError(f"Invalid transaction_type: '{self.transaction_type}'. Must be 'IN' or 'OUT'.")
+        
+        # Prevent naive datetimes from entering the domain logic
+        if self.created_at.tzinfo is None:
+            raise ValueError("Transaction.created_at MUST be a timezone-aware datetime object.")

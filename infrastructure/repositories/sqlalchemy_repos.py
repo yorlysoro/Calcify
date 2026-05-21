@@ -1,10 +1,12 @@
 from typing import Optional, List
 from uuid import UUID
 from sqlalchemy.orm import Session
+from datetime import timezone
 
-from domain.models import Currency, Product
-from infrastructure.database.models import CurrencyModel, ProductModel, ConfigModel
-from infrastructure.repositories.interfaces import ICurrencyRepository, IProductRepository, IConfigRepository
+from domain.models import Currency, Product, Transaction
+from infrastructure.database.models import CurrencyModel, ProductModel, ConfigModel, TransactionModel
+from infrastructure.repositories.interfaces import ICurrencyRepository, IProductRepository, IConfigRepository, ITransactionRepository
+
 
 class SqlAlchemyCurrencyRepository(ICurrencyRepository):
     """
@@ -143,3 +145,79 @@ class SqlAlchemyConfigRepository(IConfigRepository):
         # If 'key' exists, it updates 'value' and 'updated_at'. 
         # If it doesn't exist, it queues an INSERT.
         self._session.merge(config_instance)
+
+class SqlAlchemyTransactionRepository(ITransactionRepository):
+    """
+    SQLAlchemy implementation of the transaction ledger.
+    Responsible for executing ORM queries and securely mapping data back 
+    to strictly typed domain entities.
+    """
+
+    def __init__(self, session: Session) -> None:
+        self._session: Session = session
+
+    def _map_to_domain(self, model: TransactionModel) -> Transaction:
+        """
+        Internal helper to map an ORM model to a Pure Domain Entity.
+        Complexity: O(1)
+        """
+        # Defensive Mapping: SQLite sometimes strips timezone info upon retrieval.
+        # If the driver returns a naive datetime, we explicitly attach UTC to satisfy 
+        # the domain's strict constraint (self.created_at.tzinfo is not None).
+        dt = model.created_at
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+        return Transaction(
+            id=model.id,
+            product_id=model.product_id,
+            transaction_type=model.transaction_type,
+            quantity=model.quantity,
+            unit_price=model.unit_price,
+            currency_code=model.currency_code,
+            created_at=dt
+        )
+
+    def get_by_id(self, transaction_id: UUID) -> Optional[Transaction]:
+        """Fetches a transaction by ID. Time Complexity: O(1) via PK index."""
+        model: Optional[TransactionModel] = self._session.query(TransactionModel).filter_by(id=transaction_id).first()
+        if not model:
+            return None
+        return self._map_to_domain(model)
+
+    def get_by_product_id(self, product_id: UUID) -> List[Transaction]:
+        """
+        Fetches the ledger history for a product.
+        Time Complexity: O(N) where N is the number of transactions for the product.
+        """
+        # Ordering by created_at descending ensures a chronological ledger (newest first)
+        models: List[TransactionModel] = (
+            self._session.query(TransactionModel)
+            .filter_by(product_id=product_id)
+            .order_by(TransactionModel.created_at.desc())
+            .all()
+        )
+        return [self._map_to_domain(m) for m in models]
+
+    def save(self, transaction: Transaction) -> None:
+        """Upserts a domain transaction entity into the ORM."""
+        existing_model: Optional[TransactionModel] = self._session.query(TransactionModel).filter_by(id=transaction.id).first()
+
+        if existing_model:
+            existing_model.product_id = transaction.product_id
+            existing_model.transaction_type = transaction.transaction_type
+            existing_model.quantity = transaction.quantity
+            existing_model.unit_price = transaction.unit_price
+            existing_model.currency_code = transaction.currency_code
+            existing_model.created_at = transaction.created_at
+        else:
+            new_model = TransactionModel(
+                id=transaction.id,
+                product_id=transaction.product_id,
+                transaction_type=transaction.transaction_type,
+                quantity=transaction.quantity,
+                unit_price=transaction.unit_price,
+                currency_code=transaction.currency_code,
+                created_at=transaction.created_at
+            )
+            self._session.add(new_model)
