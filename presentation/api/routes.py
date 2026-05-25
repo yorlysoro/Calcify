@@ -1,3 +1,4 @@
+from presentation.api.auth import login_required
 import logging
 from typing import Optional, Tuple, Dict, Any, List
 from uuid import UUID
@@ -20,6 +21,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 api_bp: Blueprint = Blueprint("api", __name__, url_prefix="/api/v1")
 
 
+@login_required
 @api_bp.route("/currencies", methods=["GET"])
 def get_currencies() -> Tuple[Response, int]:
     """
@@ -49,6 +51,7 @@ def get_currencies() -> Tuple[Response, int]:
         )
 
 
+@login_required
 @api_bp.route("/products", methods=["POST"])
 def create_product() -> Tuple[Response, int]:
     """
@@ -116,6 +119,7 @@ def create_product() -> Tuple[Response, int]:
         )
 
 
+@login_required
 @api_bp.route("/products/<product_id>", methods=["GET"])
 def get_product(product_id: str) -> Tuple[Response, int]:
     """

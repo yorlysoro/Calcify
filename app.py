@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 # Infrastructure Imports
-from infrastructure.database.models import Base
+from infrastructure.database.models import Base, ConfigModel
 from infrastructure.database.session import get_db_path
 from infrastructure.database.migrations import run_migrations
 from infrastructure.repositories.sqlalchemy_repos import SqlAlchemyConfigRepository
@@ -66,6 +66,11 @@ def create_app(config_name: Optional[str] = None) -> Flask:
         if config_name == "testing":
             # Bypass Alembic for tests: build schema directly in RAM (O(1) time)
             Base.metadata.create_all(engine)
+            with SessionLocal() as test_session:
+                test_session.add(
+                    ConfigModel(key="app_secret_key", value="test_secret_123")
+                )
+                test_session.commit()
         else:
             # Idempotent Security Bootstrap (Prevents locking out active sessions)
             initialize_security("Calcify")
