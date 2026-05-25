@@ -21,8 +21,8 @@ logger: logging.Logger = logging.getLogger(__name__)
 api_bp: Blueprint = Blueprint("api", __name__, url_prefix="/api/v1")
 
 
-@login_required
 @api_bp.route("/currencies", methods=["GET"])
+@login_required
 def get_currencies() -> Tuple[Response, int]:
     """
     Retrieves all available currencies from the domain.
@@ -51,8 +51,8 @@ def get_currencies() -> Tuple[Response, int]:
         )
 
 
-@login_required
 @api_bp.route("/products", methods=["POST"])
+@login_required
 def create_product() -> Tuple[Response, int]:
     """
     Creates a new Product in the system.
@@ -119,8 +119,8 @@ def create_product() -> Tuple[Response, int]:
         )
 
 
-@login_required
 @api_bp.route("/products/<product_id>", methods=["GET"])
+@login_required
 def get_product(product_id: str) -> Tuple[Response, int]:
     """
     Retrieves a single product by its UUID and calculates its sale price dynamically.
