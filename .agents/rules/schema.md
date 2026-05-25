@@ -58,3 +58,21 @@ Represents a sellable item, containing dynamic pricing logic.
 - `get_sale_price_in_currency(...) -> Decimal`: Injects the `CurrencyConverter` domain service to dynamically calculate the sale price in a target foreign currency.
 
 <!-- # <ERD> stands for Entity-Relationship Diagram. Future infrastructure mappings will be documented in the infrastructure layer, not here. -->
+
+### 4. Transaction
+
+Represents a movement of inventory (IN or OUT) coupled with its financial snapshot in the domain layer. Pure Python entity without external dependencies.
+
+| Attribute          | Type       | Description                                                               |
+| :----------------- | :--------- | :------------------------------------------------------------------------ |
+| `id`               | `UUID`     | Universally Unique Identifier for this specific ledger entry.             |
+| `product_id`       | `UUID`     | Reference to the `Product` entity being moved.                            |
+| `transaction_type` | `str`      | Direction of movement (Strictly `'IN'` or `'OUT'`).                       |
+| `quantity`         | `int`      | Number of units moved. Must be a whole number.                            |
+| `unit_price`       | `Decimal`  | The exact financial cost/sale price per unit at the time of movement.     |
+| `currency_code`    | `str`      | ISO 4217 code of the currency used for this transaction.                  |
+| `created_at`       | `datetime` | A strict timezone-aware timestamp (UTC) of when the transaction occurred. |
+
+#### Core Domain Behaviors (Methods)
+
+- `__post_init__() -> None`: Acts as an anti-corruption layer upon instantiation. Validates that `unit_price` is strictly a `Decimal`, that `transaction_type` is valid, and explicitly rejects _naive datetimes_ to prevent timezone-shift bugs.
