@@ -1,0 +1,97 @@
+import logging
+from functools import wraps
+from typing import Callable, Any, Tuple, Dict, Optional
+
+from flask import Blueprint, request, jsonify, session, redirect, url_for, g, Response
+from werkzeug.security import check_password_hash
+
+# Infrastructure Imports (Adapters only)
+from infrastructure.repositories.sqlalchemy_repos import SqlAlchemyConfigRepository
+
+logger: logging.Logger = logging.getLogger(__name__)
+
+auth_bp: Blueprint = Blueprint("auth", __name__)
+
+
+def login_required(f: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Decorator to protect routes from unauthenticated access.
+
+    Dynamically responds based on the request path:
+    - API endpoints (/api/...) get a 401 Unauthorized JSON response.
+    - Web routes get an HTTP 302 redirect to the login interface.
+    """
+
+    @wraps(f)
+    def decorated_function(*args: Any, **kwargs: Any) -> Any:
+        if not session.get("authenticated"):
+            # REST API rejection
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "Unauthorized access. Please log in."}), 401
+
+            # Browser redirection (Assuming a 'web.login_page' route will exist)
+            # Fallback to a plain 401 if you don't have a web blueprint yet
+            return redirect("/login")
+
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+@auth_bp.route("/login", methods=["POST"])
+def login() -> Tuple[Response, int]:
+    """
+    Authenticates the administrative user via a PIN/Password.
+
+    Expects a JSON payload: {"pin": "admin123"}
+    On success, upgrades the Flask session to permanent and marks it authenticated.
+    """
+    payload: Optional[Dict[str, Any]] = request.get_json()
+
+    if not payload or "pin" not in payload:
+        return jsonify({"error": "Missing 'pin' in request payload."}), 400
+
+    raw_pin: str = str(payload["pin"])
+
+    # Instantiate the repository using the global Flask request context session
+    repo = SqlAlchemyConfigRepository(session=g.db_session)
+
+    try:
+        # Retrieve the master hash from the SQLite database
+        stored_hash: Optional[str] = repo.get_value("admin_password_hash")
+
+        if not stored_hash:
+            logger.critical(
+                "Authentication bypassed attempt: No admin hash found in DB."
+            )
+            return (
+                jsonify({"error": "System not initialized. Run security setup."}),
+                500,
+            )
+
+        # Cryptographic constant-time comparison to prevent timing attacks
+        if check_password_hash(stored_hash, raw_pin):
+            # Session Upgrade
+            session.clear()  # Prevent session fixation attacks
+            session["authenticated"] = True
+            session.permanent = True  # Extends cookie life beyond browser close
+
+            logger.info("Admin successfully authenticated.")
+            return jsonify({"message": "Authentication successful."}), 200
+        else:
+            # We deliberately use generic error messages to avoid leaking information
+            logger.warning("Failed login attempt: Invalid PIN.")
+            return jsonify({"error": "Invalid credentials."}), 401
+
+    except Exception as e:
+        logger.error(f"Login process failed internally: {str(e)}")
+        return jsonify({"error": "Internal server error during authentication."}), 500
+
+
+@auth_bp.route("/logout", methods=["POST"])
+def logout() -> Tuple[Response, int]:
+    """
+    Terminates the user's active session.
+    """
+    session.clear()
+    return jsonify({"message": "Logged out successfully."}), 200
