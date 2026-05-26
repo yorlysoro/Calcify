@@ -191,3 +191,56 @@ def test_export_backup_success(client: FlaskClient, seed_admin_password: None) -
     assert matched_product["name"] == "Backup Integration Test Product"
     # Strict validation: Decimal must have been serialized as a string
     assert matched_product["cost_price"] == "99.99"
+
+def test_get_all_products(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    Integration test for the Inventory List endpoint.
+    Verifies that multiple products can be fetched and that complex financial 
+    types (Decimal, UUID) are safely serialized into JSON strings.
+    """
+    # 1. Arrange: Forge an authenticated session
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    # 2. Arrange: Seed multiple products into the isolated test database
+    product1_id = uuid4()
+    product2_id = uuid4()
+    
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyProductRepository(g.db_session)
+        
+        repo.save(Product(
+            id=product1_id, name="Alpha Matrix Hub", 
+            cost_price=Decimal("150.75"), cost_currency_code="USD", margin_percentage=Decimal("30.00")
+        ))
+        repo.save(Product(
+            id=product2_id, name="Beta Cyber Deck", 
+            cost_price=Decimal("999.99"), cost_currency_code="EUR", margin_percentage=Decimal("15.50")
+        ))
+        
+        g.db_session.commit()
+
+    # 3. Act: Fetch the inventory list
+    response = client.get("/api/v1/products")
+    payload = response.get_json()
+
+    # 4. Assert: HTTP Protocol and Structure
+    assert response.status_code == 200
+    assert "data" in payload
+    assert isinstance(payload["data"], list)
+    
+    # Since tests share the memory DB in a session scope (depending on earlier tests), 
+    # we assert there are AT LEAST the 2 products we just inserted.
+    products_list = payload["data"]
+    assert len(products_list) >= 2
+
+    # 5. Assert: Data Integrity and Strict Serialization
+    alpha_product = next((p for p in products_list if p["id"] == str(product1_id)), None)
+    
+    assert alpha_product is not None, "Seeded Alpha product is missing from response."
+    assert alpha_product["name"] == "Alpha Matrix Hub"
+    # The Decimals MUST arrive as strings to prevent floating point corruption
+    assert alpha_product["cost_price"] == "150.75"
+    assert alpha_product["margin_percentage"] == "30.00"
+    assert alpha_product["cost_currency_code"] == "USD"

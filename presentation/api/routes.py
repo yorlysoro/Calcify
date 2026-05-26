@@ -172,6 +172,40 @@ def get_product(product_id: str) -> Tuple[Response, int]:
         logger.error(f"Failed to fetch product {product_id}: {str(e)}")
         return jsonify({"error": "Internal server error."}), 500
 
+@api_bp.route("/products", methods=["GET"])
+@login_required
+def get_products() -> Tuple[Response, int]:
+    """
+    Retrieves the entire product inventory.
+    Protected endpoint: Requires active session.
+    
+    Returns:
+        A JSON list of products with safely serialized financial types.
+    """
+    repo = SqlAlchemyProductRepository(session=g.db_session)
+    
+    try:
+        # 1. Fetch pure domain entities
+        products: List[Product] = repo.get_all()
+        
+        # 2. Serialize Domain to JSON-friendly structures (O(N) mapping)
+        response_data: List[Dict[str, Any]] = [
+            {
+                "id": str(p.id),
+                "name": p.name,
+                "cost_price": str(p.cost_price), # Strict Decimal-to-String conversion
+                "cost_currency_code": p.cost_currency_code,
+                "margin_percentage": str(p.margin_percentage)
+            }
+            for p in products
+        ]
+        
+        return jsonify({"data": response_data}), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch inventory products: {str(e)}")
+        return jsonify({"error": "Internal server error while fetching inventory."}), 500
+
 @api_bp.route("/backup/export", methods=["GET"])
 @login_required
 def export_backup() -> Response:
