@@ -1,11 +1,13 @@
 import pytest
+from decimal import Decimal
 from uuid import uuid4
 from flask import g
 from flask.testing import FlaskClient
 from werkzeug.security import generate_password_hash
 
 # Infrastructure Imports (To interact with the in-memory DB during tests)
-from infrastructure.repositories.sqlalchemy_repos import SqlAlchemyConfigRepository
+from domain.models import Product
+from infrastructure.repositories.sqlalchemy_repos import SqlAlchemyConfigRepository, SqlAlchemyProductRepository
 from infrastructure.database.models import CurrencyModel
 
 
@@ -130,3 +132,62 @@ def test_protected_crud_product_creation(
     assert response.status_code == 201
     assert response_json["message"] == "Product created successfully."
     assert response_json["data"]["id"] == new_product_id
+
+def test_export_backup_success(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    Integration test for the Backup Export Use Case.
+    Verifies that the endpoint generates the JSON payload, forces a file 
+    download via HTTP headers, and correctly serializes pure Domain Entities.
+    """
+    # 1. Arrange: Authenticate the client
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    # 2. Arrange: Seed a test product directly into the database
+    target_product_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        
+        repo = SqlAlchemyProductRepository(g.db_session)
+        test_product = Product(
+            id=target_product_id,
+            name="Backup Integration Test Product",
+            cost_price=Decimal("99.99"),
+            cost_currency_code="USD",
+            margin_percentage=Decimal("15.00")
+        )
+        repo.save(test_product)
+        g.db_session.commit()
+
+    # 3. Act: Trigger the export endpoint (Note the Blueprint URL prefix!)
+    response = client.get("/api/v1/backup/export")
+
+    # 4. Assert: Verify HTTP Protocol constraints
+    assert response.status_code == 200, "Export endpoint failed to return HTTP 200."
+    
+    # Verify Content-Disposition header triggers a download with the correct prefix
+    assert "Content-Disposition" in response.headers
+    assert response.headers["Content-Disposition"].startswith("attachment; filename=respaldo_calculadora_")
+    
+    # 5. Assert: Verify Domain Serialization Payload
+    payload = response.get_json()
+    assert payload is not None
+    assert payload.get("version") == "1.0.0"
+    
+    # Verify the nested data structure
+    data = payload.get("data", {})
+    assert "currencies" in data
+    assert "products" in data
+    assert "transactions" in data
+    
+    # Verify the test product was correctly exported and complex types (UUID/Decimal) were converted to strings
+    exported_products = data["products"]
+    assert len(exported_products) >= 1
+    
+    # Find our specific seeded product in the backup
+    matched_product = next((p for p in exported_products if p["id"] == str(target_product_id)), None)
+    
+    assert matched_product is not None, "Seeded product was not found in the backup export."
+    assert matched_product["name"] == "Backup Integration Test Product"
+    # Strict validation: Decimal must have been serialized as a string
+    assert matched_product["cost_price"] == "99.99"

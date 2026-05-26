@@ -13,7 +13,13 @@ from domain.models import Product, Currency
 from infrastructure.repositories.sqlalchemy_repos import (
     SqlAlchemyProductRepository,
     SqlAlchemyCurrencyRepository,
+    SqlAlchemyTransactionRepository
 )
+
+from datetime import datetime
+
+# Import the Use Case
+from use_cases.export_backup import ExportBackupUseCase
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -165,3 +171,44 @@ def get_product(product_id: str) -> Tuple[Response, int]:
     except Exception as e:
         logger.error(f"Failed to fetch product {product_id}: {str(e)}")
         return jsonify({"error": "Internal server error."}), 500
+
+@api_bp.route("/backup/export", methods=["GET"])
+@login_required
+def export_backup() -> Response:
+    """
+    Triggers the generation of a full system backup.
+    Protected endpoint: Requires active session.
+    
+    Returns:
+        A JSON file forced as a downloadable attachment via HTTP headers.
+    """
+    # 1. Instantiate Repositories
+    prod_repo = SqlAlchemyProductRepository(session=g.db_session)
+    curr_repo = SqlAlchemyCurrencyRepository(session=g.db_session)
+    tx_repo = SqlAlchemyTransactionRepository(session=g.db_session)
+    
+    # 2. Inject dependencies into the Use Case
+    use_case = ExportBackupUseCase(
+        product_repo=prod_repo,
+        currency_repo=curr_repo,
+        transaction_repo=tx_repo
+    )
+    
+    try:
+        # 3. Execute pure domain logic
+        backup_data: Dict[str, Any] = use_case.execute()
+        
+        # 4. Format presentation (Flask Response)
+        response: Response = jsonify(backup_data)
+        
+        # 5. Modify Headers to force file download
+        date_str: str = datetime.now().strftime("%Y%m%d")
+        filename: str = f"respaldo_calculadora_{date_str}.json"
+        
+        response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+        
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to export system backup: {str(e)}")
+        return jsonify({"error": "Failed to generate system backup."}), 500
