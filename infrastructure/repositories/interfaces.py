@@ -34,6 +34,10 @@ class IProductRepository(ABC):
     def save(self, product: Product) -> None:
         """Persists a pure Product domain entity to the data store."""
         pass
+    
+    @abstractmethod
+    def get_all(self) -> List[Product]:
+        pass
 
 class IConfigRepository(ABC):
     """
@@ -84,3 +88,8 @@ class ITransactionRepository(ABC):
     def get_by_product_id(self, product_id: UUID) -> List[Transaction]:
         """Retrieves the chronological transaction history for a specific product."""
         pass
+    
+    @abstractmethod
+    def get_all(self) -> List[Transaction]:
+        pass
+

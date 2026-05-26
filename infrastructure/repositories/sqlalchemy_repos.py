@@ -105,6 +105,15 @@ class SqlAlchemyProductRepository(IProductRepository):
             self._session.add(new_model)
             
         # The flush/commit operation is handled globally by a UnitOfWork, not here.
+    
+    def get_all(self) -> List[Product]:
+        models = self._session.query(ProductModel).all()
+        return [
+            Product(
+                id=m.id, name=m.name, cost_price=m.cost_price,
+                cost_currency_code=m.cost_currency_code, margin_percentage=m.margin_percentage
+            ) for m in models
+        ]
 
 class SqlAlchemyConfigRepository(IConfigRepository):
     """
@@ -221,3 +230,7 @@ class SqlAlchemyTransactionRepository(ITransactionRepository):
                 created_at=transaction.created_at
             )
             self._session.add(new_model)
+    
+    def get_all(self) -> List[Transaction]:
+        models = self._session.query(TransactionModel).order_by(TransactionModel.created_at.desc()).all()
+        return [self._map_to_domain(m) for m in models]
