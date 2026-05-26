@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calcify | Financial Hub</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Remove arrows/spinners from number inputs for a cleaner financial look */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-gray-100 font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-200 min-h-screen flex flex-col">
+
+    <header class="border-b border-zinc-800 bg-black/50 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-xl font-bold tracking-widest uppercase text-white">Calcify</span>
+                <span class="px-2 py-0.5 rounded text-[0.65rem] font-mono border border-zinc-800 bg-zinc-900 text-zinc-400">v0.4.0</span>
+            </div>
+            
+            <div class="flex items-center gap-2 bg-zinc-900/80 border border-zinc-800 px-3 py-1.5 rounded-full shadow-inner">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span class="text-xs font-medium text-zinc-300 tracking-wide">System Online</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-6xl mx-auto w-full px-4 md:px-6 py-8 flex flex-col gap-8">
+        
+        <div class="space-y-2">
+            <h1 class="text-3xl md:text-4xl font-light text-white">Financial <strong class="font-bold text-emerald-500">Calculator</strong></h1>
+            <p class="text-zinc-500 text-sm">Real-time cross-currency conversion matrix.</p>
+        </div>
+
+        <div class="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-6 md:p-8 shadow-2xl">
+            
+            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 mb-8 relative">
+                
+                <div class="relative group">
+                    <label for="inputAmount" class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500 z-10 transition-colors group-focus-within:text-white">Base Amount</label>
+                    <input 
+                        type="number" 
+                        id="inputAmount" 
+                        value="100.00" 
+                        placeholder="0.00"
+                        class="w-full bg-black border border-zinc-800 rounded-xl text-3xl md:text-4xl p-5 md:p-6 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-mono"
+                    >
+                </div>
+
+                <div class="relative group md:w-48">
+                    <label for="selectBase" class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500 z-10 transition-colors group-focus-within:text-white">Source</label>
+                    <select 
+                        id="selectBase" 
+                        class="w-full h-full min-h-[4rem] bg-black border border-zinc-800 rounded-xl text-xl p-5 md:p-6 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all cursor-pointer appearance-none"
+                    >
+                        </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-zinc-500">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                </div>
+
+            </div>
+
+            <hr class="border-zinc-800/50 mb-8">
+
+            <div>
+                <h2 class="text-xs font-bold tracking-widest uppercase text-zinc-500 mb-4">Live Conversions</h2>
+                <div id="conversionResults" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Static Domain Mocks (No Fetch/API allowed in this step)
+            const MOCK_RATES = {
+                "USD": 1.00,       // Base Anchor
+                "VES": 36.50,      // Venezuelan Bolivar
+                "EUR": 0.92,       // Euro
+                "COP": 3850.00,    // Colombian Peso
+                "GBP": 0.79        // British Pound
+            };
+
+            // 2. DOM Elements Mapping
+            const inputAmount = document.getElementById('inputAmount');
+            const selectBase = document.getElementById('selectBase');
+            const resultsContainer = document.getElementById('conversionResults');
+
+            // 3. Initialization: Populate Select Dropdown
+            Object.keys(MOCK_RATES).forEach(currency => {
+                const option = document.createElement('option');
+                option.value = currency;
+                option.textContent = currency;
+                selectBase.appendChild(option);
+            });
+
+            // 4. Formatting Utility (Intl API)
+            function formatCurrency(value, currencyCode) {
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: currencyCode,
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(value);
+            }
+
+            // 5. Core Engine: Calculate and Render Real-Time
+            function renderConversions() {
+                // Safely parse the input, default to 0 if empty/invalid
+                const amount = parseFloat(inputAmount.value) || 0;
+                const baseCurrency = selectBase.value;
+                const baseRate = MOCK_RATES[baseCurrency];
+
+                // Clear previous results
+                resultsContainer.innerHTML = '';
+
+                // Iterate over all currencies
+                Object.entries(MOCK_RATES).forEach(([targetCurrency, targetRate]) => {
+                    // Do not render a card for the currently selected base currency
+                    if (targetCurrency === baseCurrency) return;
+
+                    // Mathematics: Convert to USD anchor, then to Target Rate
+                    const amountInUSD = amount / baseRate;
+                    const finalAmount = amountInUSD * targetRate;
+                    const exchangeRateLabel = (targetRate / baseRate).toFixed(4);
+
+                    // Build the DOM Node
+                    const card = document.createElement('div');
+                    card.className = "bg-black border border-zinc-800 rounded-xl p-5 flex flex-col justify-between shadow-lg hover:border-emerald-500/50 transition-colors duration-300 group";
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-zinc-400 text-sm font-medium tracking-widest uppercase group-hover:text-emerald-400 transition-colors">${targetCurrency}</span>
+                            <span class="px-2 py-1 bg-zinc-900 rounded text-[0.65rem] text-zinc-500 font-mono border border-zinc-800" title="1 ${baseCurrency} = ${exchangeRateLabel} ${targetCurrency}">Rate: ${exchangeRateLabel}</span>
+                        </div>
+                        <div class="text-2xl md:text-3xl font-mono font-light text-white truncate" title="${finalAmount}">
+                            ${formatCurrency(finalAmount, targetCurrency)}
+                        </div>
+                    `;
+                    resultsContainer.appendChild(card);
+                });
+            }
+
+            // 6. Event Listeners for Real-Time Reactivity
+            inputAmount.addEventListener('input', renderConversions);
+            selectBase.addEventListener('change', renderConversions);
+
+            // 7. Trigger initial render on load
+            renderConversions();
+        });
+    </script>
+</body>
+</html>
