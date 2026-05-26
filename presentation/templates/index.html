@@ -141,195 +141,292 @@
     </main>
 
     <script>
-        // ------------------------------------
-        // 1. CALCULATOR VIEW MODULE
-        // ------------------------------------
-        const CalculatorView = {
-            MOCK_RATES: { "USD": 1.00, "VES": 36.50, "EUR": 0.92, "COP": 3850.00 },
+        // ==========================================
+// 1. API CLIENT (Core HTTP Interceptor)
+// ==========================================
+const ApiClient = {
+    /**
+     * Internal generic request handler enforcing JSON standards and Security interceptors.
+     */
+    async _request(url, options = {}) {
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+
+        try {
+            const response = await fetch(url, { ...options, headers });
+
+            // CRITICAL INTERCEPTOR: Session Expired / Unauthorized Access
+            if (response.status === 401) {
+                console.warn("[Security] Unauthorized access detected. Redirecting to login...");
+                window.location.href = '/login';
+                // Return a pending promise that never resolves to halt downstream JS execution
+                return new Promise(() => {});
+            }
+
+            // Handle non-JSON responses (like our File Download for Backups)
+            const contentType = response.headers.get("content-type");
+            if (contentType && !contentType.includes("application/json")) {
+                return response;
+            }
+
+            // Parse standard JSON response
+            const data = await response.json();
+
+            // Fail-Fast: Throw backend descriptive errors directly to the Views
+            if (!response.ok) {
+                throw new Error(data.error || `HTTP Error: ${response.status}`);
+            }
+
+            return data;
             
-            init() {
-                this.inputEl = document.getElementById('calc-input');
-                this.selectEl = document.getElementById('calc-base');
-                this.resultsEl = document.getElementById('calc-results');
+        } catch (error) {
+            console.error(`[ApiClient Error] ${options.method || 'GET'} ${url}:`, error.message);
+            throw error;
+        }
+    },
 
-                // Populate Dropdown
-                Object.keys(this.MOCK_RATES).forEach(cur => {
-                    const opt = document.createElement('option');
-                    opt.value = opt.textContent = cur;
-                    this.selectEl.appendChild(opt);
-                });
+    // Public Async API Methods
+    get(url) { return this._request(url, { method: 'GET' }); },
+    post(url, data) { return this._request(url, { method: 'POST', body: JSON.stringify(data) }); },
+    put(url, data) { return this._request(url, { method: 'PUT', body: JSON.stringify(data) }); },
+    delete(url) { return this._request(url, { method: 'DELETE' }); }
+};
 
-                // Bind Listeners
-                this.inputEl.addEventListener('input', () => this.render());
-                this.selectEl.addEventListener('change', () => this.render());
+
+// ==========================================
+// 2. CALCULATOR VIEW MODULE
+// ==========================================
+const CalculatorView = {
+    // Note: We need a backend endpoint for Exchange Rates. 
+    // Temporarily using internal state until the ExchangeRate backend is connected.
+    rates: {},
+    
+    async init() {
+        this.inputEl = document.getElementById('calc-input');
+        this.selectEl = document.getElementById('calc-base');
+        this.resultsEl = document.getElementById('calc-results');
+
+        // Bind Listeners
+        this.inputEl.addEventListener('input', () => this.render());
+        this.selectEl.addEventListener('change', () => this.render());
+        
+        await this.fetchCurrencies();
+    },
+
+    async fetchCurrencies() {
+        try {
+            // Fetch real currencies from Flask API
+            const response = await ApiClient.get('/api/v1/currencies');
+            const currencies = response.data;
+            
+            this.selectEl.innerHTML = ''; // Clear options
+            
+            // Populate Dropdown from DB
+            currencies.forEach(cur => {
+                const opt = document.createElement('option');
+                opt.value = cur.code;
+                opt.textContent = `${cur.code} - ${cur.name}`;
+                this.selectEl.appendChild(opt);
                 
-                this.render(); // Initial draw
-            },
+                // MOCK RATES FOR NOW: Until we build the ExchangeRate API Endpoint
+                this.rates[cur.code] = cur.code === 'USD' ? 1.0 : (cur.code === 'VES' ? 36.5 : 1.5);
+            });
 
-            formatMoney(value, currency) {
-                return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(value);
-            },
+            this.render();
+        } catch (error) {
+            this.resultsEl.innerHTML = `<div class="text-red-500 col-span-full">Failed to load currencies: ${error.message}</div>`;
+        }
+    },
 
-            render() {
-                const amount = parseFloat(this.inputEl.value) || 0;
-                const baseCur = this.selectEl.value;
-                const baseRate = this.MOCK_RATES[baseCur];
+    formatMoney(value, currency) {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(value);
+    },
 
-                this.resultsEl.innerHTML = '';
+    render() {
+        const amount = parseFloat(this.inputEl.value) || 0;
+        const baseCur = this.selectEl.value;
+        const baseRate = this.rates[baseCur];
 
-                Object.entries(this.MOCK_RATES).forEach(([targetCur, targetRate]) => {
-                    if (targetCur === baseCur) return;
-                    
-                    const finalVal = (amount / baseRate) * targetRate;
-                    const exchangeRate = (targetRate / baseRate).toFixed(4);
+        this.resultsEl.innerHTML = '';
 
-                    this.resultsEl.innerHTML += `
-                        <div class="bg-black border border-zinc-800 rounded-xl p-5 flex flex-col justify-between shadow-lg">
-                            <div class="flex justify-between items-center mb-4">
-                                <span class="text-zinc-400 text-sm font-medium tracking-widest uppercase">${targetCur}</span>
-                                <span class="px-2 py-1 bg-zinc-900 rounded text-[0.65rem] text-zinc-500 font-mono border border-zinc-800">Rate: ${exchangeRate}</span>
-                            </div>
-                            <div class="text-2xl font-mono text-white truncate">${this.formatMoney(finalVal, targetCur)}</div>
-                        </div>
-                    `;
-                });
-            }
-        };
+        if (!baseCur) return;
 
-        // ------------------------------------
-        // 2. INVENTORY VIEW MODULE
-        // ------------------------------------
-        const InventoryView = {
-            MOCK_PRODUCTS: [
-                { id: "uuid-1", name: "Mechanical Keyboard", cost: 100.00, currency: "USD", margin: 30 },
-                { id: "uuid-2", name: "Wireless Mouse", cost: 45.00, currency: "USD", margin: 25 },
-                { id: "uuid-3", name: "USB-C Hub", cost: 890.00, currency: "VES", margin: 40 }
-            ],
-
-            init() {
-                this.listEl = document.getElementById('inv-list');
-                this.searchInput = document.getElementById('inv-search');
-
-                this.searchInput.addEventListener('input', (e) => this.render(e.target.value));
-                this.render();
-            },
-
-            calculateSalePrice(cost, margin) {
-                return cost * (1 + (margin / 100));
-            },
-
-            formatMoney(value, currency) {
-                return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(value);
-            },
-
-            render(filterText = "") {
-                this.listEl.innerHTML = '';
-                const filtered = this.MOCK_PRODUCTS.filter(p => p.name.toLowerCase().includes(filterText.toLowerCase()));
-
-                if (filtered.length === 0) {
-                    this.listEl.innerHTML = `<div class="p-8 text-center text-zinc-500 text-sm">No products found.</div>`;
-                    return;
-                }
-
-                filtered.forEach(p => {
-                    const salePrice = this.calculateSalePrice(p.cost, p.margin);
-                    
-                    // Responsive Grid Row (Stack on mobile, Row on Desktop)
-                    this.listEl.innerHTML += `
-                        <div class="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 md:gap-4 p-4 md:items-center hover:bg-zinc-900/50 transition-colors">
-                            <div class="font-medium text-white">${p.name}</div>
-                            
-                            <div class="flex justify-between md:block text-sm">
-                                <span class="md:hidden text-zinc-500 text-xs uppercase tracking-wider">Cost:</span>
-                                <span class="font-mono text-zinc-400">${this.formatMoney(p.cost, p.currency)}</span>
-                            </div>
-                            
-                            <div class="flex justify-between md:block text-sm">
-                                <span class="md:hidden text-zinc-500 text-xs uppercase tracking-wider">Margin:</span>
-                                <span class="font-mono text-emerald-500">+${p.margin}%</span>
-                            </div>
-                            
-                            <div class="flex justify-between md:block text-sm">
-                                <span class="md:hidden text-zinc-500 text-xs uppercase tracking-wider">Sale:</span>
-                                <span class="font-mono text-white font-bold">${this.formatMoney(salePrice, p.currency)}</span>
-                            </div>
-                            
-                            <div class="mt-4 md:mt-0 md:text-right">
-                                <button class="w-full md:w-auto px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs uppercase tracking-wider font-bold rounded transition-colors">Edit</button>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-        };
-
-        // ------------------------------------
-        // 3. CONFIGURATION VIEW MODULE
-        // ------------------------------------
-        const ConfigView = {
-            init() {
-                document.getElementById('config-pwd-form').addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    alert("Mock: Password updated locally.");
-                    e.target.reset();
-                });
-
-                document.getElementById('config-export-btn').addEventListener('click', () => {
-                    alert("Mock: Preparing JSON Backup Download...");
-                });
-            }
-        };
-
-        // ------------------------------------
-        // 4. MAIN APP CONTROLLER
-        // ------------------------------------
-        const App = {
-            state: { currentTab: 'view-calculator' },
+        Object.entries(this.rates).forEach(([targetCur, targetRate]) => {
+            if (targetCur === baseCur) return;
             
-            init() {
-                // Initialize sub-modules
-                CalculatorView.init();
-                InventoryView.init();
-                ConfigView.init();
+            const finalVal = (amount / baseRate) * targetRate;
+            const exchangeRate = (targetRate / baseRate).toFixed(4);
 
-                // Bind Tab Navigation
-                const tabBtns = document.querySelectorAll('.tab-btn');
-                tabBtns.forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        this.switchTab(e.currentTarget.dataset.target);
-                    });
-                });
-            },
+            this.resultsEl.innerHTML += `
+                <div class="bg-black border border-zinc-800 rounded-xl p-5 flex flex-col justify-between shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-zinc-400 text-sm font-medium tracking-widest uppercase">${targetCur}</span>
+                        <span class="px-2 py-1 bg-zinc-900 rounded text-[0.65rem] text-zinc-500 font-mono border border-zinc-800">Rate: ${exchangeRate}</span>
+                    </div>
+                    <div class="text-2xl font-mono text-white truncate">${this.formatMoney(finalVal, targetCur)}</div>
+                </div>
+            `;
+        });
+    }
+};
 
-            switchTab(targetId) {
-                this.state.currentTab = targetId;
+// ==========================================
+// 3. INVENTORY VIEW MODULE
+// ==========================================
+const InventoryView = {
+    products: [],
 
-                // 1. Toggle DOM visibility
-                document.querySelectorAll('main > section').forEach(sec => {
-                    if(sec.id === targetId) {
-                        sec.classList.remove('hidden');
-                    } else {
-                        sec.classList.add('hidden');
-                    }
-                });
+    async init() {
+        this.listEl = document.getElementById('inv-list');
+        this.searchInput = document.getElementById('inv-search');
+        
+        this.searchInput.addEventListener('input', (e) => this.render(e.target.value));
+        
+        await this.fetchProducts();
+    },
 
-                // 2. Toggle Tab Active Styles
-                document.querySelectorAll('.tab-btn').forEach(btn => {
-                    if (btn.dataset.target === targetId) {
-                        // Active state
-                        btn.classList.replace('text-zinc-500', 'text-emerald-500');
-                        btn.classList.replace('border-transparent', 'border-emerald-500');
-                    } else {
-                        // Inactive state
-                        btn.classList.replace('text-emerald-500', 'text-zinc-500');
-                        btn.classList.replace('border-emerald-500', 'border-transparent');
-                    }
-                });
+    async fetchProducts() {
+        this.listEl.innerHTML = `<div class="p-8 text-center text-zinc-500 animate-pulse">Loading products from database...</div>`;
+        
+        try {
+            // Note: We need to build GET /api/v1/products in Flask!
+            const response = await ApiClient.get('/api/v1/products');
+            this.products = response.data;
+            this.render();
+        } catch (error) {
+            this.listEl.innerHTML = `<div class="p-8 text-center text-red-500 text-sm font-mono">Error: ${error.message}<br><br><span class="text-zinc-500">Hint: Did we build the GET /products route in Flask yet?</span></div>`;
+        }
+    },
+
+    calculateSalePrice(cost, margin) {
+        return cost * (1 + (margin / 100));
+    },
+
+    formatMoney(value, currency) {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(value);
+    },
+
+    render(filterText = "") {
+        this.listEl.innerHTML = '';
+        
+        const filtered = this.products.filter(p => p.name.toLowerCase().includes(filterText.toLowerCase()));
+
+        if (filtered.length === 0) {
+            this.listEl.innerHTML = `<div class="p-8 text-center text-zinc-500 text-sm">No products match your search.</div>`;
+            return;
+        }
+
+        filtered.forEach(p => {
+            const salePrice = this.calculateSalePrice(parseFloat(p.cost_price), parseFloat(p.margin_percentage));
+            
+            this.listEl.innerHTML += `
+                <div class="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 md:gap-4 p-4 md:items-center hover:bg-zinc-900/50 transition-colors">
+                    <div class="font-medium text-white">${p.name}</div>
+                    
+                    <div class="flex justify-between md:block text-sm">
+                        <span class="md:hidden text-zinc-500 text-xs uppercase tracking-wider">Cost:</span>
+                        <span class="font-mono text-zinc-400">${this.formatMoney(p.cost_price, p.cost_currency_code)}</span>
+                    </div>
+                    
+                    <div class="flex justify-between md:block text-sm">
+                        <span class="md:hidden text-zinc-500 text-xs uppercase tracking-wider">Margin:</span>
+                        <span class="font-mono text-emerald-500">+${p.margin_percentage}%</span>
+                    </div>
+                    
+                    <div class="flex justify-between md:block text-sm">
+                        <span class="md:hidden text-zinc-500 text-xs uppercase tracking-wider">Sale:</span>
+                        <span class="font-mono text-white font-bold">${this.formatMoney(salePrice, p.cost_currency_code)}</span>
+                    </div>
+                    
+                    <div class="mt-4 md:mt-0 md:text-right">
+                        <button class="w-full md:w-auto px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs uppercase tracking-wider font-bold rounded transition-colors">Edit</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+};
+
+// ==========================================
+// 4. CONFIGURATION VIEW MODULE
+// ==========================================
+const ConfigView = {
+    init() {
+        // Data Export Binding
+        document.getElementById('config-export-btn').addEventListener('click', async (e) => {
+            const btn = e.target;
+            const originalText = btn.textContent;
+            btn.textContent = "Generating Backup...";
+            btn.disabled = true;
+
+            try {
+                // Fetch the file from our protected Flask endpoint
+                const response = await ApiClient.get('/api/v1/backup/export');
+                
+                // Convert response to Blob and trigger native browser download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `calcify_backup_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                
+            } catch (error) {
+                alert(`Export Failed: ${error.message}`);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
-        };
+        });
+    }
+};
 
-        // Boot the Application
-        document.addEventListener('DOMContentLoaded', () => App.init());
+// ==========================================
+// 5. MAIN APP CONTROLLER
+// ==========================================
+const App = {
+    state: { currentTab: 'view-calculator' },
+    
+    init() {
+        CalculatorView.init();
+        InventoryView.init();
+        ConfigView.init();
+
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.switchTab(e.currentTarget.dataset.target);
+            });
+        });
+    },
+
+    switchTab(targetId) {
+        this.state.currentTab = targetId;
+
+        document.querySelectorAll('main > section').forEach(sec => {
+            if(sec.id === targetId) sec.classList.remove('hidden');
+            else sec.classList.add('hidden');
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            if (btn.dataset.target === targetId) {
+                btn.classList.replace('text-zinc-500', 'text-emerald-500');
+                btn.classList.replace('border-transparent', 'border-emerald-500');
+            } else {
+                btn.classList.replace('text-emerald-500', 'text-zinc-500');
+                btn.classList.replace('border-emerald-500', 'border-transparent');
+            }
+        });
+    }
+};
+
+// Boot the Application
+document.addEventListener('DOMContentLoaded', () => App.init());
 
     </script>
 </body>
