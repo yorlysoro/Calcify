@@ -78,6 +78,7 @@ def create_product() -> Tuple[Response, int]:
         cost_price = Decimal(str(payload["cost_price"]))
         cost_currency_code = str(payload["cost_currency_code"])
         margin_percentage = Decimal(str(payload["margin_percentage"]))
+        category = str(payload.get("category", "Uncategorized"))
 
         # 2. Instantiate Pure Domain Entity
         new_product = Product(
@@ -86,6 +87,7 @@ def create_product() -> Tuple[Response, int]:
             cost_price=cost_price,
             cost_currency_code=cost_currency_code,
             margin_percentage=margin_percentage,
+            category=category
         )
 
         # 3. Persistence (Unit of Work)
@@ -157,6 +159,7 @@ def get_product(product_id: str) -> Tuple[Response, int]:
                         "calculated_sale_price": str(
                             calculated_sale_price
                         ),  # Serialized to string to prevent float precision loss in JSON
+                        "category": product.category,
                     }
                 }
             ),
@@ -195,7 +198,8 @@ def get_products() -> Tuple[Response, int]:
                 "name": p.name,
                 "cost_price": str(p.cost_price), # Strict Decimal-to-String conversion
                 "cost_currency_code": p.cost_currency_code,
-                "margin_percentage": str(p.margin_percentage)
+                "margin_percentage": str(p.margin_percentage),
+                "category": p.category,
             }
             for p in products
         ]

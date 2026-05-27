@@ -84,6 +84,7 @@ class Product:
     cost_price: Decimal
     cost_currency_code: str
     margin_percentage: Decimal
+    category: str = "Uncategorized"
 
     def __post_init__(self) -> None:
         """Validates that financial attributes are strictly Decimals to prevent float corruption."""
