@@ -85,7 +85,7 @@
                 </div>
                 <div class="flex gap-2 w-full md:w-auto">
                     <input type="text" id="inv-search" placeholder="Search product..." class="w-full md:w-64 bg-black border border-zinc-800 rounded text-sm px-4 py-2 text-white focus:border-emerald-500 focus:outline-none placeholder-zinc-600">
-                    <button class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors whitespace-nowrap shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                    <button id="add-product-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors whitespace-nowrap shadow-[0_0_15px_rgba(16,185,129,0.3)]">
                         + Add Product
                     </button>
                 </div>
@@ -141,103 +141,113 @@
     </main>
 
     <script>
-        // ==========================================
+       // ==========================================
 // 1. API CLIENT (Core HTTP Interceptor)
 // ==========================================
 const ApiClient = {
-    /**
-     * Internal generic request handler enforcing JSON standards and Security interceptors.
-     */
     async _request(url, options = {}) {
-        const headers = {
-            'Content-Type': 'application/json',
-            ...options.headers
-        };
-
+        const headers = { 'Content-Type': 'application/json', ...options.headers };
         try {
             const response = await fetch(url, { ...options, headers });
-
-            // CRITICAL INTERCEPTOR: Session Expired / Unauthorized Access
-            if (response.status === 401) {
-                console.warn("[Security] Unauthorized access detected. Redirecting to login...");
-                window.location.href = '/login';
-                // Return a pending promise that never resolves to halt downstream JS execution
-                return new Promise(() => {});
-            }
-
-            // Handle non-JSON responses (like our File Download for Backups)
-            const contentType = response.headers.get("content-type");
-            if (contentType && !contentType.includes("application/json")) {
-                return response;
-            }
-
-            // Parse standard JSON response
-            const data = await response.json();
-
-            // Fail-Fast: Throw backend descriptive errors directly to the Views
-            if (!response.ok) {
-                throw new Error(data.error || `HTTP Error: ${response.status}`);
-            }
-
-            return data;
             
+            if (response.status === 401) {
+                console.warn("[Security] Session expired. Redirecting...");
+                window.location.href = '/login';
+                return new Promise(() => {}); // Halt execution
+            }
+
+            const contentType = response.headers.get("content-type");
+            if (contentType && !contentType.includes("application/json")) return response;
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || `HTTP Error: ${response.status}`);
+            return data;
         } catch (error) {
-            console.error(`[ApiClient Error] ${options.method || 'GET'} ${url}:`, error.message);
+            console.error(`[ApiClient] ${options.method || 'GET'} ${url} failed:`, error.message);
             throw error;
         }
     },
-
-    // Public Async API Methods
     get(url) { return this._request(url, { method: 'GET' }); },
-    post(url, data) { return this._request(url, { method: 'POST', body: JSON.stringify(data) }); },
-    put(url, data) { return this._request(url, { method: 'PUT', body: JSON.stringify(data) }); },
-    delete(url) { return this._request(url, { method: 'DELETE' }); }
+    post(url, data) { return this._request(url, { method: 'POST', body: JSON.stringify(data) }); }
 };
 
-
 // ==========================================
-// 2. CALCULATOR VIEW MODULE
+// 2. MAIN APP CONTROLLER (Global State)
 // ==========================================
-const CalculatorView = {
-    // Note: We need a backend endpoint for Exchange Rates. 
-    // Temporarily using internal state until the ExchangeRate backend is connected.
-    rates: {},
+const App = {
+    state: { 
+        currentTab: 'view-calculator',
+        currencies: [],
+        products: [],
+        // Fallback rates until backend implements an Exchange Rate API
+        ratesFallback: { "USD": 1.0, "VES": 36.5, "EUR": 0.92, "COP": 3850.0 }
+    },
     
     async init() {
+        // Parallel data fetching for maximum performance
+        try {
+            const [curRes, prodRes] = await Promise.all([
+                ApiClient.get('/api/v1/currencies'),
+                ApiClient.get('/api/v1/products')
+            ]);
+            
+            this.state.currencies = curRes.data;
+            this.state.products = prodRes.data;
+            
+            // Update UI Status
+            document.getElementById('sys-status-text').textContent = 'Online';
+            document.getElementById('sys-status-dot').classList.replace('bg-zinc-500', 'bg-emerald-500');
+        } catch (error) {
+            alert("Failed to bootstrap application data. See console.");
+        }
+
+        // Initialize Views using the populated global state
+        CalculatorView.init();
+        InventoryView.init();
+        ConfigView.init();
+
+        // Bind Tab Navigation
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.switchTab(e.currentTarget.dataset.target));
+        });
+    },
+
+    switchTab(targetId) {
+        this.state.currentTab = targetId;
+        document.querySelectorAll('main > section').forEach(sec => {
+            sec.classList.toggle('hidden', sec.id !== targetId);
+        });
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            const isActive = btn.dataset.target === targetId;
+            btn.classList.toggle('text-emerald-500', isActive);
+            btn.classList.toggle('border-emerald-500', isActive);
+            btn.classList.toggle('text-zinc-500', !isActive);
+            btn.classList.toggle('border-transparent', !isActive);
+        });
+    }
+};
+
+// ==========================================
+// 3. CALCULATOR VIEW MODULE
+// ==========================================
+const CalculatorView = {
+    init() {
         this.inputEl = document.getElementById('calc-input');
         this.selectEl = document.getElementById('calc-base');
         this.resultsEl = document.getElementById('calc-results');
 
-        // Bind Listeners
+        this.selectEl.innerHTML = '';
+        App.state.currencies.forEach(cur => {
+            const opt = document.createElement('option');
+            opt.value = cur.code;
+            opt.textContent = `${cur.code} - ${cur.name}`;
+            this.selectEl.appendChild(opt);
+        });
+
         this.inputEl.addEventListener('input', () => this.render());
         this.selectEl.addEventListener('change', () => this.render());
         
-        await this.fetchCurrencies();
-    },
-
-    async fetchCurrencies() {
-        try {
-            // Fetch real currencies from Flask API
-            const response = await ApiClient.get('/api/v1/currencies');
-            const currencies = response.data;
-            
-            this.selectEl.innerHTML = ''; // Clear options
-            
-            // Populate Dropdown from DB
-            currencies.forEach(cur => {
-                const opt = document.createElement('option');
-                opt.value = cur.code;
-                opt.textContent = `${cur.code} - ${cur.name}`;
-                this.selectEl.appendChild(opt);
-                
-                // MOCK RATES FOR NOW: Until we build the ExchangeRate API Endpoint
-                this.rates[cur.code] = cur.code === 'USD' ? 1.0 : (cur.code === 'VES' ? 36.5 : 1.5);
-            });
-
-            this.render();
-        } catch (error) {
-            this.resultsEl.innerHTML = `<div class="text-red-500 col-span-full">Failed to load currencies: ${error.message}</div>`;
-        }
+        this.render(); 
     },
 
     formatMoney(value, currency) {
@@ -247,25 +257,25 @@ const CalculatorView = {
     render() {
         const amount = parseFloat(this.inputEl.value) || 0;
         const baseCur = this.selectEl.value;
-        const baseRate = this.rates[baseCur];
+        const baseRate = App.state.ratesFallback[baseCur] || 1; 
 
         this.resultsEl.innerHTML = '';
-
         if (!baseCur) return;
 
-        Object.entries(this.rates).forEach(([targetCur, targetRate]) => {
-            if (targetCur === baseCur) return;
+        App.state.currencies.forEach(cur => {
+            if (cur.code === baseCur) return;
             
+            const targetRate = App.state.ratesFallback[cur.code] || 1;
             const finalVal = (amount / baseRate) * targetRate;
             const exchangeRate = (targetRate / baseRate).toFixed(4);
 
             this.resultsEl.innerHTML += `
                 <div class="bg-black border border-zinc-800 rounded-xl p-5 flex flex-col justify-between shadow-lg">
                     <div class="flex justify-between items-center mb-4">
-                        <span class="text-zinc-400 text-sm font-medium tracking-widest uppercase">${targetCur}</span>
+                        <span class="text-zinc-400 text-sm font-medium tracking-widest uppercase">${cur.code}</span>
                         <span class="px-2 py-1 bg-zinc-900 rounded text-[0.65rem] text-zinc-500 font-mono border border-zinc-800">Rate: ${exchangeRate}</span>
                     </div>
-                    <div class="text-2xl font-mono text-white truncate">${this.formatMoney(finalVal, targetCur)}</div>
+                    <div class="text-2xl font-mono text-white truncate">${this.formatMoney(finalVal, cur.code)}</div>
                 </div>
             `;
         });
@@ -273,75 +283,139 @@ const CalculatorView = {
 };
 
 // ==========================================
-// 3. INVENTORY VIEW MODULE
+// 4. INVENTORY VIEW MODULE (CRUD Integration)
 // ==========================================
 const InventoryView = {
-    products: [],
-
-    async init() {
+    init() {
         this.listEl = document.getElementById('inv-list');
         this.searchInput = document.getElementById('inv-search');
-        
         this.searchInput.addEventListener('input', (e) => this.render(e.target.value));
         
-        await this.fetchProducts();
+        this.injectModal();
+        this.render();
     },
 
-    async fetchProducts() {
-        this.listEl.innerHTML = `<div class="p-8 text-center text-zinc-500 animate-pulse">Loading products from database...</div>`;
-        
-        try {
-            // Note: We need to build GET /api/v1/products in Flask!
-            const response = await ApiClient.get('/api/v1/products');
-            this.products = response.data;
-            this.render();
-        } catch (error) {
-            this.listEl.innerHTML = `<div class="p-8 text-center text-red-500 text-sm font-mono">Error: ${error.message}<br><br><span class="text-zinc-500">Hint: Did we build the GET /products route in Flask yet?</span></div>`;
-        }
-    },
+    injectModal() {
+        // Dynamic HTML injection for the Add Product Modal
+        const modalHTML = `
+        <div id="product-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+                <h3 class="text-xl font-light text-white mb-4">Add <strong class="font-bold text-emerald-500">Product</strong></h3>
+                <form id="product-form" class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Name</label>
+                        <input type="text" id="prod-name" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Cost Price</label>
+                            <input type="number" step="0.01" id="prod-cost" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Currency</label>
+                            <select id="prod-currency" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"></select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Margin (%)</label>
+                        <input type="number" step="0.01" id="prod-margin" value="30.00" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none">
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" id="close-modal-btn" class="px-4 py-2 text-sm font-bold text-zinc-400 hover:text-white">Cancel</button>
+                        <button type="submit" id="save-modal-btn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-    calculateSalePrice(cost, margin) {
-        return cost * (1 + (margin / 100));
-    },
+        const modal = document.getElementById('product-modal');
+        const form = document.getElementById('product-form');
+        const currencySelect = document.getElementById('prod-currency');
 
-    formatMoney(value, currency) {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(value);
+        // Populate modal currencies
+        App.state.currencies.forEach(cur => {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = cur.code;
+            currencySelect.appendChild(opt);
+        });
+
+        // Add Product button (assuming it has ID 'add-product-btn' in your HTML)
+        const addBtn = document.getElementById('add-product-btn');
+        addBtn.addEventListener('click', () => modal.classList.remove('hidden'));
+        document.getElementById('close-modal-btn').addEventListener('click', () => {
+            modal.classList.add('hidden');
+            form.reset();
+        });
+
+        // Form Submit Handler
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const saveBtn = document.getElementById('save-modal-btn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = "Saving...";
+
+            const payload = {
+                id: crypto.randomUUID(),
+                name: document.getElementById('prod-name').value,
+                cost_price: document.getElementById('prod-cost').value,
+                cost_currency_code: document.getElementById('prod-currency').value,
+                margin_percentage: document.getElementById('prod-margin').value
+            };
+
+            try {
+                // Post to Backend
+                await ApiClient.post('/api/v1/products', payload);
+                
+                // Refresh Global State
+                const newProducts = await ApiClient.get('/api/v1/products');
+                App.state.products = newProducts.data;
+                this.render(); // Re-render table
+                
+                modal.classList.add('hidden');
+                form.reset();
+            } catch (error) {
+                alert(`Creation failed: ${error.message}`);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "Save";
+            }
+        });
     },
 
     render(filterText = "") {
         this.listEl.innerHTML = '';
-        
-        const filtered = this.products.filter(p => p.name.toLowerCase().includes(filterText.toLowerCase()));
+        const filtered = App.state.products.filter(p => p.name.toLowerCase().includes(filterText.toLowerCase()));
 
         if (filtered.length === 0) {
-            this.listEl.innerHTML = `<div class="p-8 text-center text-zinc-500 text-sm">No products match your search.</div>`;
+            this.listEl.innerHTML = `<div class="p-8 text-center text-zinc-500 text-sm">No products found.</div>`;
             return;
         }
 
         filtered.forEach(p => {
-            const salePrice = this.calculateSalePrice(parseFloat(p.cost_price), parseFloat(p.margin_percentage));
+            // Note: Our backend GET /products also returns 'calculated_sale_price' natively, 
+            // but we can calculate it here or fetch it. Let's calculate for speed.
+            const cost = parseFloat(p.cost_price);
+            const margin = parseFloat(p.margin_percentage);
+            const salePrice = cost * (1 + (margin / 100));
             
             this.listEl.innerHTML += `
                 <div class="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 md:gap-4 p-4 md:items-center hover:bg-zinc-900/50 transition-colors">
                     <div class="font-medium text-white">${p.name}</div>
-                    
                     <div class="flex justify-between md:block text-sm">
-                        <span class="md:hidden text-zinc-500 text-xs uppercase tracking-wider">Cost:</span>
-                        <span class="font-mono text-zinc-400">${this.formatMoney(p.cost_price, p.cost_currency_code)}</span>
+                        <span class="md:hidden text-zinc-500 text-xs uppercase">Cost:</span>
+                        <span class="font-mono text-zinc-400">${CalculatorView.formatMoney(cost, p.cost_currency_code)}</span>
                     </div>
-                    
                     <div class="flex justify-between md:block text-sm">
-                        <span class="md:hidden text-zinc-500 text-xs uppercase tracking-wider">Margin:</span>
+                        <span class="md:hidden text-zinc-500 text-xs uppercase">Margin:</span>
                         <span class="font-mono text-emerald-500">+${p.margin_percentage}%</span>
                     </div>
-                    
                     <div class="flex justify-between md:block text-sm">
-                        <span class="md:hidden text-zinc-500 text-xs uppercase tracking-wider">Sale:</span>
-                        <span class="font-mono text-white font-bold">${this.formatMoney(salePrice, p.cost_currency_code)}</span>
+                        <span class="md:hidden text-zinc-500 text-xs uppercase">Sale:</span>
+                        <span class="font-mono text-white font-bold">${CalculatorView.formatMoney(salePrice, p.cost_currency_code)}</span>
                     </div>
-                    
                     <div class="mt-4 md:mt-0 md:text-right">
-                        <button class="w-full md:w-auto px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs uppercase tracking-wider font-bold rounded transition-colors">Edit</button>
+                        <span class="text-xs text-zinc-700 font-mono">ID: ${p.id.split('-')[0]}</span>
                     </div>
                 </div>
             `;
@@ -350,83 +424,28 @@ const InventoryView = {
 };
 
 // ==========================================
-// 4. CONFIGURATION VIEW MODULE
+// 5. CONFIGURATION VIEW MODULE
 // ==========================================
 const ConfigView = {
     init() {
-        // Data Export Binding
-        document.getElementById('config-export-btn').addEventListener('click', async (e) => {
-            const btn = e.target;
-            const originalText = btn.textContent;
-            btn.textContent = "Generating Backup...";
-            btn.disabled = true;
-
-            try {
-                // Fetch the file from our protected Flask endpoint
-                const response = await ApiClient.get('/api/v1/backup/export');
-                
-                // Convert response to Blob and trigger native browser download
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `calcify_backup_${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-                
-            } catch (error) {
-                alert(`Export Failed: ${error.message}`);
-            } finally {
-                btn.textContent = originalText;
-                btn.disabled = false;
-            }
+        // Because the endpoint triggers a Content-Disposition attachment, 
+        // window.open gracefully handles the download using the active session cookies!
+        document.getElementById('config-export-btn').addEventListener('click', () => {
+            window.open('/api/v1/backup/export', '_blank');
         });
     }
 };
 
-// ==========================================
-// 5. MAIN APP CONTROLLER
-// ==========================================
-const App = {
-    state: { currentTab: 'view-calculator' },
+// Boot the Application (Minor HTML fix for the status dot)
+document.addEventListener('DOMContentLoaded', () => {
+    // Add IDs to header status elements so App.init() can target them
+    const statusDot = document.querySelector('.bg-emerald-500');
+    if(statusDot) statusDot.id = 'sys-status-dot';
+    const statusText = document.querySelector('.text-zinc-300.tracking-wider');
+    if(statusText) statusText.id = 'sys-status-text';
     
-    init() {
-        CalculatorView.init();
-        InventoryView.init();
-        ConfigView.init();
-
-        const tabBtns = document.querySelectorAll('.tab-btn');
-        tabBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.switchTab(e.currentTarget.dataset.target);
-            });
-        });
-    },
-
-    switchTab(targetId) {
-        this.state.currentTab = targetId;
-
-        document.querySelectorAll('main > section').forEach(sec => {
-            if(sec.id === targetId) sec.classList.remove('hidden');
-            else sec.classList.add('hidden');
-        });
-
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            if (btn.dataset.target === targetId) {
-                btn.classList.replace('text-zinc-500', 'text-emerald-500');
-                btn.classList.replace('border-transparent', 'border-emerald-500');
-            } else {
-                btn.classList.replace('text-emerald-500', 'text-zinc-500');
-                btn.classList.replace('border-emerald-500', 'border-transparent');
-            }
-        });
-    }
-};
-
-// Boot the Application
-document.addEventListener('DOMContentLoaded', () => App.init());
+    App.init();
+});
 
     </script>
 </body>
