@@ -244,3 +244,51 @@ def test_get_all_products(client: FlaskClient, seed_admin_password: None) -> Non
     assert alpha_product["cost_price"] == "150.75"
     assert alpha_product["margin_percentage"] == "30.00"
     assert alpha_product["cost_currency_code"] == "USD"
+
+def test_delete_product_returns_404_if_not_found(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    TDD Red Phase: Verifies that attempting to delete a non-existent UUID 
+    gracefully returns an HTTP 404 instead of causing a 500 Server Error.
+    """
+    # Forge authenticated session
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    fake_id = str(uuid4())
+    response = client.delete(f"/api/v1/products/{fake_id}")
+    
+    assert response.status_code == 404
+    assert "error" in response.get_json()
+
+
+def test_delete_product_success(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    Tests the successful Hard Delete of an existing product.
+    """
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    # 1. Arrange: Seed a product to delete
+    target_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyProductRepository(g.db_session)
+        repo.save(Product(
+            id=target_id, name="Delete Target", category="Test",
+            cost_price=Decimal("10.00"), cost_currency_code="USD", margin_percentage=Decimal("0.00")
+        ))
+        g.db_session.commit()
+
+    # 2. Act: Execute the DELETE request
+    response = client.delete(f"/api/v1/products/{target_id}")
+
+    # 3. Assert: Verify the response and database state
+    assert response.status_code == 200
+    assert response.get_json()["message"] == "Product deleted successfully."
+    
+    # Verify it's actually gone from the DB
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        check_repo = SqlAlchemyProductRepository(g.db_session)
+        assert check_repo.get_by_id(target_id) is None
+

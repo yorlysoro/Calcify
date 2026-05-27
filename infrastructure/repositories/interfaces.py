@@ -38,6 +38,14 @@ class IProductRepository(ABC):
     @abstractmethod
     def get_all(self) -> List[Product]:
         pass
+    
+    @abstractmethod
+    def delete(self, product_id: UUID) -> bool:
+        """
+        Removes a product from the database.
+        Returns True if successful, False if the product was not found.
+        """
+        pass
 
 class IConfigRepository(ABC):
     """

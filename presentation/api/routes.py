@@ -250,3 +250,32 @@ def export_backup() -> Response:
     except Exception as e:
         logger.error(f"Failed to export system backup: {str(e)}")
         return jsonify({"error": "Failed to generate system backup."}), 500
+
+@api_bp.route("/products/<product_id>", methods=["DELETE"])
+@login_required
+def delete_product(product_id: str) -> Tuple[Response, int]:
+    """
+    Executes a Hard Delete on a specific product by its UUID.
+    Protected endpoint: Requires active session.
+    """
+    repo = SqlAlchemyProductRepository(session=g.db_session)
+
+    try:
+        parsed_id = UUID(product_id)
+        
+        # Cross the repository boundary
+        deleted: bool = repo.delete(parsed_id)
+        
+        if not deleted:
+            return jsonify({"error": f"Product with ID {product_id} not found."}), 404
+            
+        # Unit of Work: Commit the transaction
+        g.db_session.commit()
+        return jsonify({"message": "Product deleted successfully."}), 200
+
+    except ValueError:
+        return jsonify({"error": "Invalid product ID format. Must be a valid UUID."}), 400
+    except Exception as e:
+        g.db_session.rollback()
+        logger.error(f"Failed to delete product {product_id}: {str(e)}")
+        return jsonify({"error": "Internal server error."}), 500

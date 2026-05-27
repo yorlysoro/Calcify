@@ -117,6 +117,19 @@ class SqlAlchemyProductRepository(IProductRepository):
                 cost_currency_code=m.cost_currency_code, margin_percentage=m.margin_percentage
             ) for m in models
         ]
+    
+    def delete(self, product_id: UUID) -> bool:
+        """
+        Executes a hard delete on the ORM model. Time Complexity: O(1) via PK index.
+        """
+        model: Optional[ProductModel] = self._session.query(ProductModel).filter_by(id=product_id).first()
+        
+        if not model:
+            return False
+            
+        self._session.delete(model)
+        # Note: Deliberately omitting self._session.commit() to respect the Unit of Work
+        return True
 
 class SqlAlchemyConfigRepository(IConfigRepository):
     """
