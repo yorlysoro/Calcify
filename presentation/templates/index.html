@@ -1,270 +1,591 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Calcify | Terminal SPA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
-                    },
-                    colors: { cyber: { 500: '#10b981' } } // Emerald-500 base mapping
-                }
-            }
-        }
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+              mono: ["JetBrains Mono", "ui-monospace", "monospace"],
+            },
+            colors: { cyber: { 500: "#10b981" } }, // Emerald-500 base mapping
+          },
+        },
+      };
     </script>
     <style>
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type="number"] { -moz-appearance: textfield; }
-        /* Smooth fade for tab switching */
-        section { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type="number"] {
+        -moz-appearance: textfield;
+      }
+      /* Smooth fade for tab switching */
+      section {
+        animation: fadeIn 0.3s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(5px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
     </style>
-</head>
-<body class="bg-zinc-950 text-gray-100 font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-200 h-screen flex flex-col overflow-hidden">
-
+  </head>
+  <body
+    class="bg-zinc-950 text-gray-100 font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-200 h-screen flex flex-col overflow-hidden"
+  >
     <header class="bg-black border-b border-zinc-800 z-50 shrink-0">
-        <div class="px-4 md:px-6 h-14 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <span class="text-xl font-bold tracking-widest uppercase text-white">Calcify</span>
-                <span class="px-2 py-0.5 rounded text-[0.65rem] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 hidden md:inline">SPA MODE</span>
-            </div>
-            <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-full">
-                <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
-                <span class="text-[0.65rem] font-bold text-zinc-300 tracking-wider uppercase">Offline</span>
-            </div>
+      <div class="px-4 md:px-6 h-14 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="text-xl font-bold tracking-widest uppercase text-white"
+            >Calcify</span
+          >
+          <span
+            class="px-2 py-0.5 rounded text-[0.65rem] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 hidden md:inline"
+            >SPA MODE</span
+          >
         </div>
+        <div
+          class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-full"
+        >
+          <span class="relative flex h-2 w-2"
+            ><span
+              class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+            ></span
+            ><span
+              class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"
+            ></span
+          ></span>
+          <span
+            class="text-[0.65rem] font-bold text-zinc-300 tracking-wider uppercase"
+            >Offline</span
+          >
+        </div>
+      </div>
 
-        <nav class="flex overflow-x-auto px-4 md:px-6 gap-6 scrollbar-hide border-t border-zinc-900 md:border-none">
-            <button data-target="view-calculator" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-emerald-500 border-emerald-500">
-                <span>🧮</span> Calculadora
-            </button>
-            <button data-target="view-inventory" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700">
-                <span>📦</span> Inventario
-            </button>
-            <button data-target="view-config" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700">
-                <span>⚙️</span> Configuración
-            </button>
-        </nav>
+      <nav
+        class="flex overflow-x-auto px-4 md:px-6 gap-6 scrollbar-hide border-t border-zinc-900 md:border-none"
+      >
+        <button
+          data-target="view-calculator"
+          class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-emerald-500 border-emerald-500"
+        >
+          <span>🧮</span> Calculadora
+        </button>
+        <button
+          data-target="view-inventory"
+          class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700"
+        >
+          <span>📦</span> Inventario
+        </button>
+        <button
+          data-target="view-config"
+          class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700"
+        >
+          <span>⚙️</span> Configuración
+        </button>
+      </nav>
     </header>
 
     <main class="flex-grow overflow-y-auto p-4 md:p-8 w-full max-w-6xl mx-auto">
-        
-        <section id="view-calculator" class="w-full">
-            <div class="mb-6">
-                <h2 class="text-2xl font-light text-white">Financial <strong class="font-bold text-emerald-500">Matrix</strong></h2>
-                <p class="text-zinc-500 text-sm">Real-time cross-currency engine.</p>
+      <section id="view-calculator" class="w-full">
+        <div class="mb-6">
+          <h2 class="text-2xl font-light text-white">
+            Financial <strong class="font-bold text-emerald-500">Matrix</strong>
+          </h2>
+          <p class="text-zinc-500 text-sm">Real-time cross-currency engine.</p>
+        </div>
+        <div
+          class="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-6 shadow-2xl"
+        >
+          <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 mb-8">
+            <div class="relative group">
+              <label
+                class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500"
+                >Base Amount</label
+              >
+              <input
+                type="number"
+                id="calc-input"
+                value="100.00"
+                class="w-full bg-black border border-zinc-800 rounded-xl text-3xl p-5 text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors"
+              />
             </div>
-            <div class="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-6 shadow-2xl">
-                <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 mb-8">
-                    <div class="relative group">
-                        <label class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500">Base Amount</label>
-                        <input type="number" id="calc-input" value="100.00" class="w-full bg-black border border-zinc-800 rounded-xl text-3xl p-5 text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors">
-                    </div>
-                    <div class="relative md:w-48">
-                        <label class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500">Source</label>
-                        <select id="calc-base" class="w-full h-full min-h-[4rem] bg-black border border-zinc-800 rounded-xl text-xl p-5 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"></select>
-                    </div>
-                </div>
-                <hr class="border-zinc-800 mb-6">
-                <div id="calc-results" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            <div class="relative md:w-48">
+              <label
+                class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500"
+                >Source</label
+              >
+              <select
+                id="calc-base"
+                class="w-full h-full min-h-[4rem] bg-black border border-zinc-800 rounded-xl text-xl p-5 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"
+              ></select>
             </div>
-        </section>
+          </div>
+          <hr class="border-zinc-800 mb-6" />
+          <div
+            id="calc-results"
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+          ></div>
+        </div>
+      </section>
 
-        <section id="view-inventory" class="hidden w-full">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
+      <section id="view-inventory" class="hidden w-full">
+        <div
+          class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4"
+        >
+          <div>
+            <h2 class="text-2xl font-light text-white">
+              Product
+              <strong class="font-bold text-emerald-500">Inventory</strong>
+            </h2>
+            <p class="text-zinc-500 text-sm">Manage assets and margins.</p>
+          </div>
+          <div class="flex gap-2 w-full md:w-auto">
+            <input
+              type="text"
+              id="inv-search"
+              placeholder="Search product..."
+              class="w-full md:w-64 bg-black border border-zinc-800 rounded text-sm px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
+            />
+            <button
+              id="add-product-btn"
+              class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors whitespace-nowrap shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50"
+            >
+              + Add Product
+            </button>
+          </div>
+        </div>
+
+        <div
+          class="bg-black border border-zinc-800 rounded-xl overflow-hidden shadow-2xl p-4 md:p-0"
+        >
+          <table
+            class="hidden md:table w-full text-left text-sm whitespace-nowrap"
+          >
+            <thead
+              class="bg-zinc-900 border-b border-zinc-800 text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest"
+            >
+              <tr>
+                <th class="px-6 py-4">Product Name</th>
+                <th class="px-6 py-4">Category</th>
+                <th class="px-6 py-4">Cost Price</th>
+                <th class="px-6 py-4">Margin</th>
+                <th class="px-6 py-4">Sale Price</th>
+                <th class="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody
+              id="inv-table-body"
+              class="divide-y divide-zinc-800/50 text-zinc-300"
+            ></tbody>
+          </table>
+
+          <div
+            id="inv-cards-container"
+            class="grid grid-cols-1 gap-4 md:hidden"
+          ></div>
+        </div>
+
+        <div
+          id="product-modal"
+          class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div
+            class="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative overflow-hidden"
+          >
+            <div
+              id="modal-loading"
+              class="hidden absolute inset-0 bg-zinc-950/80 backdrop-blur flex items-center justify-center z-10"
+            >
+              <div
+                class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"
+              ></div>
+            </div>
+
+            <h3 class="text-xl font-light text-white mb-4">
+              Add <strong class="font-bold text-emerald-500">Product</strong>
+            </h3>
+            <form id="product-form" class="space-y-4">
+              <div>
+                <label
+                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                  >Name</label
+                >
+                <input
+                  type="text"
+                  id="prod-name"
+                  required
+                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                  >Category</label
+                >
+                <input
+                  type="text"
+                  id="prod-category"
+                  placeholder="e.g. Hardware, Services..."
+                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+              <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <h2 class="text-2xl font-light text-white">Product <strong class="font-bold text-emerald-500">Inventory</strong></h2>
-                    <p class="text-zinc-500 text-sm">Manage assets and margins.</p>
+                  <label
+                    class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                    >Cost Price</label
+                  >
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="prod-cost"
+                    required
+                    class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                  />
                 </div>
-                <div class="flex gap-2 w-full md:w-auto">
-                    <input type="text" id="inv-search" placeholder="Search product..." class="w-full md:w-64 bg-black border border-zinc-800 rounded text-sm px-4 py-2 text-white focus:border-emerald-500 focus:outline-none placeholder-zinc-600">
-                    <button id="add-product-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors whitespace-nowrap shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                        + Add Product
-                    </button>
+                <div>
+                  <label
+                    class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                    >Currency</label
+                  >
+                  <select
+                    id="prod-currency"
+                    class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                  ></select>
                 </div>
-            </div>
-            
-            <div class="bg-black border border-zinc-800 rounded-xl overflow-hidden shadow-2xl">
-                <div class="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 p-4 bg-zinc-900 border-b border-zinc-800 text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest">
-                    <div>Product Name</div>
-                    <div>Cost Price</div>
-                    <div>Margin (%)</div>
-                    <div>Sale Price</div>
-                    <div class="text-right">Actions</div>
-                </div>
-                <div id="inv-list" class="flex flex-col divide-y divide-zinc-800/50">
-                    </div>
-            </div>
-        </section>
+              </div>
+              <div>
+                <label
+                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                  >Margin (%)</label
+                >
+                <input
+                  type="number"
+                  step="0.01"
+                  id="prod-margin"
+                  value="30.00"
+                  required
+                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
 
-        <section id="view-config" class="hidden w-full max-w-2xl mx-auto">
-            <div class="mb-6">
-                <h2 class="text-2xl font-light text-white">System <strong class="font-bold text-emerald-500">Settings</strong></h2>
-                <p class="text-zinc-500 text-sm">Security and data management.</p>
+              <div
+                class="bg-zinc-900 border border-zinc-800 p-3 rounded text-center"
+              >
+                <span
+                  class="text-xs text-zinc-500 uppercase tracking-widest block mb-1"
+                  >Estimated Sale Price</span
+                >
+                <span
+                  id="live-price-preview"
+                  class="text-2xl font-mono text-emerald-400 font-bold"
+                  >0.00</span
+                >
+              </div>
+
+              <div class="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  id="close-modal-btn"
+                  class="px-4 py-2 text-sm font-bold text-zinc-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  id="save-modal-btn"
+                  class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-config" class="hidden w-full max-w-2xl mx-auto">
+        <div
+          class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 mb-8 shadow-2xl"
+        >
+          <div class="flex justify-between items-center mb-6">
+            <h3
+              class="text-sm font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2"
+            >
+              <span>📊</span> Cierre Diario
+            </h3>
+            <span
+              class="text-xs font-mono text-zinc-500 bg-black px-2 py-1 rounded border border-zinc-800"
+              id="report-date"
+              >YYYY-MM-DD</span
+            >
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-black border border-red-900/30 p-4 rounded-lg">
+              <span
+                class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1"
+                >Total Compras</span
+              >
+              <span id="metric-purchases" class="text-xl font-mono text-red-400"
+                >Loading...</span
+              >
             </div>
-
-            <div class="space-y-6">
-                <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
-                    <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>🔒</span> Security</h3>
-                    <form id="config-pwd-form" class="space-y-4">
-                        <div>
-                            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">New PIN</label>
-                            <input type="password" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Confirm PIN</label>
-                            <input type="password" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none">
-                        </div>
-                        <button type="submit" class="w-full border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white font-bold text-sm px-4 py-2 rounded transition-colors">
-                            Update Credentials
-                        </button>
-                    </form>
-                </div>
-
-                <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
-                    <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>💾</span> Data Backup</h3>
-                    <p class="text-xs text-zinc-500 mb-4">Export all currencies, products, and transactions to a secure JSON file.</p>
-                    <button id="config-export-btn" class="w-full bg-transparent border border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-black font-bold uppercase tracking-widest text-sm py-3 rounded transition-all shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-                        Download JSON Backup
-                    </button>
-                </div>
+            <div class="bg-black border border-emerald-900/30 p-4 rounded-lg">
+              <span
+                class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1"
+                >Total Ventas</span
+              >
+              <span id="metric-sales" class="text-xl font-mono text-emerald-400"
+                >Loading...</span
+              >
             </div>
-        </section>
+            <div
+              class="bg-black border border-cyber-500/30 p-4 rounded-lg relative overflow-hidden group"
+            >
+              <div
+                class="absolute inset-0 bg-emerald-500/5 group-hover:bg-emerald-500/10 transition-colors"
+              ></div>
+              <span
+                class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1 relative z-10"
+                >Ganancia Neta</span
+              >
+              <span
+                id="metric-profit"
+                class="text-2xl font-bold font-mono text-white relative z-10"
+                >Loading...</span
+              >
+            </div>
+          </div>
+        </div>
+        <div class="mb-6">
+          <h2 class="text-2xl font-light text-white">
+            System <strong class="font-bold text-emerald-500">Settings</strong>
+          </h2>
+          <p class="text-zinc-500 text-sm">Security and data management.</p>
+        </div>
 
+        <div class="space-y-6">
+          <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
+            <h3
+              class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"
+            >
+              <span>🔒</span> Security
+            </h3>
+            <form id="config-pwd-form" class="space-y-4">
+              <div>
+                <label
+                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                  >New PIN</label
+                >
+                <input
+                  type="password"
+                  required
+                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                  >Confirm PIN</label
+                >
+                <input
+                  type="password"
+                  required
+                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                class="w-full border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white font-bold text-sm px-4 py-2 rounded transition-colors"
+              >
+                Update Credentials
+              </button>
+            </form>
+          </div>
+
+          <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
+            <h3
+              class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"
+            >
+              <span>💾</span> Data Backup
+            </h3>
+            <p class="text-xs text-zinc-500 mb-4">
+              Export all currencies, products, and transactions to a secure JSON
+              file.
+            </p>
+            <button
+              id="config-export-btn"
+              class="w-full bg-transparent border border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-black font-bold uppercase tracking-widest text-sm py-3 rounded transition-all shadow-[0_0_10px_rgba(16,185,129,0.1)]"
+            >
+              Download JSON Backup
+            </button>
+          </div>
+        </div>
+      </section>
     </main>
 
     <script>
-       // ==========================================
-// 1. API CLIENT (Core HTTP Interceptor)
-// ==========================================
-const ApiClient = {
-    async _request(url, options = {}) {
-        const headers = { 'Content-Type': 'application/json', ...options.headers };
-        try {
+      // ==========================================
+      // 1. API CLIENT (Core HTTP Interceptor)
+      // ==========================================
+      const ApiClient = {
+        async _request(url, options = {}) {
+          const headers = {
+            "Content-Type": "application/json",
+            ...options.headers,
+          };
+          try {
             const response = await fetch(url, { ...options, headers });
-            
+
             if (response.status === 401) {
-                console.warn("[Security] Session expired. Redirecting...");
-                window.location.href = '/login';
-                return new Promise(() => {}); // Halt execution
+              console.warn("[Security] Session expired. Redirecting...");
+              window.location.href = "/login";
+              return new Promise(() => {}); // Halt execution
             }
 
             const contentType = response.headers.get("content-type");
-            if (contentType && !contentType.includes("application/json")) return response;
+            if (contentType && !contentType.includes("application/json"))
+              return response;
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || `HTTP Error: ${response.status}`);
+            if (!response.ok)
+              throw new Error(data.error || `HTTP Error: ${response.status}`);
             return data;
-        } catch (error) {
-            console.error(`[ApiClient] ${options.method || 'GET'} ${url} failed:`, error.message);
+          } catch (error) {
+            console.error(
+              `[ApiClient] ${options.method || "GET"} ${url} failed:`,
+              error.message,
+            );
             throw error;
-        }
-    },
-    get(url) { return this._request(url, { method: 'GET' }); },
-    post(url, data) { return this._request(url, { method: 'POST', body: JSON.stringify(data) }); }
-};
+          }
+        },
+        get(url) {
+          return this._request(url, { method: "GET" });
+        },
+        post(url, data) {
+          return this._request(url, {
+            method: "POST",
+            body: JSON.stringify(data),
+          });
+        },
+      };
 
-// ==========================================
-// 2. MAIN APP CONTROLLER (Global State)
-// ==========================================
-const App = {
-    state: { 
-        currentTab: 'view-calculator',
-        currencies: [],
-        products: [],
-        // Fallback rates until backend implements an Exchange Rate API
-        ratesFallback: { "USD": 1.0, "VES": 36.5, "EUR": 0.92, "COP": 3850.0 }
-    },
-    
-    async init() {
-        // Parallel data fetching for maximum performance
-        try {
+      // ==========================================
+      // 2. MAIN APP CONTROLLER (Global State)
+      // ==========================================
+      const App = {
+        state: {
+          currentTab: "view-calculator",
+          currencies: [],
+          products: [],
+          // Fallback rates until backend implements an Exchange Rate API
+          ratesFallback: { USD: 1.0, VES: 36.5, EUR: 0.92, COP: 3850.0 },
+        },
+
+        async init() {
+          // Parallel data fetching for maximum performance
+          try {
             const [curRes, prodRes] = await Promise.all([
-                ApiClient.get('/api/v1/currencies'),
-                ApiClient.get('/api/v1/products')
+              ApiClient.get("/api/v1/currencies"),
+              ApiClient.get("/api/v1/products"),
             ]);
-            
+
             this.state.currencies = curRes.data;
             this.state.products = prodRes.data;
-            
+
             // Update UI Status
-            document.getElementById('sys-status-text').textContent = 'Online';
-            document.getElementById('sys-status-dot').classList.replace('bg-zinc-500', 'bg-emerald-500');
-        } catch (error) {
+            document.getElementById("sys-status-text").textContent = "Online";
+            document
+              .getElementById("sys-status-dot")
+              .classList.replace("bg-zinc-500", "bg-emerald-500");
+          } catch (error) {
             alert("Failed to bootstrap application data. See console.");
-        }
+          }
 
-        // Initialize Views using the populated global state
-        CalculatorView.init();
-        InventoryView.init();
-        ConfigView.init();
+          // Initialize Views using the populated global state
+          CalculatorView.init();
+          InventoryView.init();
+          ConfigView.init();
 
-        // Bind Tab Navigation
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.switchTab(e.currentTarget.dataset.target));
-        });
-    },
+          // Bind Tab Navigation
+          document.querySelectorAll(".tab-btn").forEach((btn) => {
+            btn.addEventListener("click", (e) =>
+              this.switchTab(e.currentTarget.dataset.target),
+            );
+          });
+        },
 
-    switchTab(targetId) {
-        this.state.currentTab = targetId;
-        document.querySelectorAll('main > section').forEach(sec => {
-            sec.classList.toggle('hidden', sec.id !== targetId);
-        });
-        document.querySelectorAll('.tab-btn').forEach(btn => {
+        switchTab(targetId) {
+          this.state.currentTab = targetId;
+          document.querySelectorAll("main > section").forEach((sec) => {
+            sec.classList.toggle("hidden", sec.id !== targetId);
+          });
+          document.querySelectorAll(".tab-btn").forEach((btn) => {
             const isActive = btn.dataset.target === targetId;
-            btn.classList.toggle('text-emerald-500', isActive);
-            btn.classList.toggle('border-emerald-500', isActive);
-            btn.classList.toggle('text-zinc-500', !isActive);
-            btn.classList.toggle('border-transparent', !isActive);
-        });
-    }
-};
+            btn.classList.toggle("text-emerald-500", isActive);
+            btn.classList.toggle("border-emerald-500", isActive);
+            btn.classList.toggle("text-zinc-500", !isActive);
+            btn.classList.toggle("border-transparent", !isActive);
+          });
+        },
+      };
 
-// ==========================================
-// 3. CALCULATOR VIEW MODULE
-// ==========================================
-const CalculatorView = {
-    init() {
-        this.inputEl = document.getElementById('calc-input');
-        this.selectEl = document.getElementById('calc-base');
-        this.resultsEl = document.getElementById('calc-results');
+      // ==========================================
+      // 3. CALCULATOR VIEW MODULE
+      // ==========================================
+      const CalculatorView = {
+        init() {
+          this.inputEl = document.getElementById("calc-input");
+          this.selectEl = document.getElementById("calc-base");
+          this.resultsEl = document.getElementById("calc-results");
 
-        this.selectEl.innerHTML = '';
-        App.state.currencies.forEach(cur => {
-            const opt = document.createElement('option');
+          this.selectEl.innerHTML = "";
+          App.state.currencies.forEach((cur) => {
+            const opt = document.createElement("option");
             opt.value = cur.code;
             opt.textContent = `${cur.code} - ${cur.name}`;
             this.selectEl.appendChild(opt);
-        });
+          });
 
-        this.inputEl.addEventListener('input', () => this.render());
-        this.selectEl.addEventListener('change', () => this.render());
-        
-        this.render(); 
-    },
+          this.inputEl.addEventListener("input", () => this.render());
+          this.selectEl.addEventListener("change", () => this.render());
 
-    formatMoney(value, currency) {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(value);
-    },
+          this.render();
+        },
 
-    render() {
-        const amount = parseFloat(this.inputEl.value) || 0;
-        const baseCur = this.selectEl.value;
-        const baseRate = App.state.ratesFallback[baseCur] || 1; 
+        formatMoney(value, currency) {
+          return new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: currency,
+          }).format(value);
+        },
 
-        this.resultsEl.innerHTML = '';
-        if (!baseCur) return;
+        render() {
+          const amount = parseFloat(this.inputEl.value) || 0;
+          const baseCur = this.selectEl.value;
+          const baseRate = App.state.ratesFallback[baseCur] || 1;
 
-        App.state.currencies.forEach(cur => {
+          this.resultsEl.innerHTML = "";
+          if (!baseCur) return;
+
+          App.state.currencies.forEach((cur) => {
             if (cur.code === baseCur) return;
-            
+
             const targetRate = App.state.ratesFallback[cur.code] || 1;
             const finalVal = (amount / baseRate) * targetRate;
             const exchangeRate = (targetRate / baseRate).toFixed(4);
@@ -278,175 +599,257 @@ const CalculatorView = {
                     <div class="text-2xl font-mono text-white truncate">${this.formatMoney(finalVal, cur.code)}</div>
                 </div>
             `;
-        });
-    }
-};
+          });
+        },
+      };
 
-// ==========================================
-// 4. INVENTORY VIEW MODULE (CRUD Integration)
-// ==========================================
-const InventoryView = {
-    init() {
-        this.listEl = document.getElementById('inv-list');
-        this.searchInput = document.getElementById('inv-search');
-        this.searchInput.addEventListener('input', (e) => this.render(e.target.value));
-        
-        this.injectModal();
-        this.render();
-    },
+      // ==========================================
+      // 4. INVENTORY VIEW MODULE (CRUD Integration)
+      // ==========================================
+      // Add DELETE method to ApiClient (put this inside your existing ApiClient object)
+      // delete(url) { return this._request(url, { method: 'DELETE' }); }
 
-    injectModal() {
-        // Dynamic HTML injection for the Add Product Modal
-        const modalHTML = `
-        <div id="product-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div class="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
-                <h3 class="text-xl font-light text-white mb-4">Add <strong class="font-bold text-emerald-500">Product</strong></h3>
-                <form id="product-form" class="space-y-4">
-                    <div>
-                        <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Name</label>
-                        <input type="text" id="prod-name" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Cost Price</label>
-                            <input type="number" step="0.01" id="prod-cost" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Currency</label>
-                            <select id="prod-currency" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"></select>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Margin (%)</label>
-                        <input type="number" step="0.01" id="prod-margin" value="30.00" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none">
-                    </div>
-                    <div class="flex justify-end gap-3 mt-6">
-                        <button type="button" id="close-modal-btn" class="px-4 py-2 text-sm font-bold text-zinc-400 hover:text-white">Cancel</button>
-                        <button type="submit" id="save-modal-btn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded">Save</button>
-                    </div>
-                </form>
-            </div>
-        </div>`;
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
+      // ==========================================
+      // INVENTORY VIEW MODULE (Dual UI & Reactive)
+      // ==========================================
+      const InventoryView = {
+        init() {
+          this.tbodyEl = document.getElementById("inv-table-body");
+          this.cardsContainer = document.getElementById("inv-cards-container");
+          this.searchInput = document.getElementById("inv-search");
 
-        const modal = document.getElementById('product-modal');
-        const form = document.getElementById('product-form');
-        const currencySelect = document.getElementById('prod-currency');
+          this.searchInput.addEventListener("input", (e) =>
+            this.render(e.target.value),
+          );
 
-        // Populate modal currencies
-        App.state.currencies.forEach(cur => {
-            const opt = document.createElement('option');
+          this.initModal();
+          this.render();
+        },
+
+        initModal() {
+          const modal = document.getElementById("product-modal");
+          const form = document.getElementById("product-form");
+          const currencySelect = document.getElementById("prod-currency");
+          const costInput = document.getElementById("prod-cost");
+          const marginInput = document.getElementById("prod-margin");
+          const previewEl = document.getElementById("live-price-preview");
+
+          // Populate Currencies
+          currencySelect.innerHTML = "";
+          App.state.currencies.forEach((cur) => {
+            const opt = document.createElement("option");
             opt.value = opt.textContent = cur.code;
             currencySelect.appendChild(opt);
-        });
+          });
 
-        // Add Product button (assuming it has ID 'add-product-btn' in your HTML)
-        const addBtn = document.getElementById('add-product-btn');
-        addBtn.addEventListener('click', () => modal.classList.remove('hidden'));
-        document.getElementById('close-modal-btn').addEventListener('click', () => {
-            modal.classList.add('hidden');
-            form.reset();
-        });
+          // LIVE PREVIEW CALCULATION
+          const updatePreview = () => {
+            const cost = parseFloat(costInput.value) || 0;
+            const margin = parseFloat(marginInput.value) || 0;
+            const salePrice = cost * (1 + margin / 100);
+            previewEl.textContent = CalculatorView.formatMoney(
+              salePrice,
+              currencySelect.value || "USD",
+            );
+          };
 
-        // Form Submit Handler
-        form.addEventListener('submit', async (e) => {
+          costInput.addEventListener("input", updatePreview);
+          marginInput.addEventListener("input", updatePreview);
+          currencySelect.addEventListener("change", updatePreview);
+
+          // Modal Toggles
+          document
+            .getElementById("add-product-btn")
+            .addEventListener("click", () => modal.classList.remove("hidden"));
+          document
+            .getElementById("close-modal-btn")
+            .addEventListener("click", () => {
+              modal.classList.add("hidden");
+              form.reset();
+              updatePreview();
+            });
+
+          // ASYNC FORM SUBMISSION
+          form.addEventListener("submit", async (e) => {
             e.preventDefault();
-            const saveBtn = document.getElementById('save-modal-btn');
-            saveBtn.disabled = true;
-            saveBtn.textContent = "Saving...";
+            const loader = document.getElementById("modal-loading");
+            loader.classList.remove("hidden"); // Disable form interaction
 
             const payload = {
-                id: crypto.randomUUID(),
-                name: document.getElementById('prod-name').value,
-                cost_price: document.getElementById('prod-cost').value,
-                cost_currency_code: document.getElementById('prod-currency').value,
-                margin_percentage: document.getElementById('prod-margin').value
+              id: crypto.randomUUID(),
+              name: document.getElementById("prod-name").value,
+              category:
+                document.getElementById("prod-category").value ||
+                "Uncategorized", // Requires Backend Update!
+              cost_price: costInput.value,
+              cost_currency_code: currencySelect.value,
+              margin_percentage: marginInput.value,
             };
 
             try {
-                // Post to Backend
-                await ApiClient.post('/api/v1/products', payload);
-                
-                // Refresh Global State
-                const newProducts = await ApiClient.get('/api/v1/products');
-                App.state.products = newProducts.data;
-                this.render(); // Re-render table
-                
-                modal.classList.add('hidden');
-                form.reset();
+              await ApiClient.post("/api/v1/products", payload);
+              // Refresh Data
+              const res = await ApiClient.get("/api/v1/products");
+              App.state.products = res.data;
+              this.render();
+
+              modal.classList.add("hidden");
+              form.reset();
+              updatePreview();
             } catch (error) {
-                alert(`Creation failed: ${error.message}`);
+              alert(`Error saving product: ${error.message}`);
             } finally {
-                saveBtn.disabled = false;
-                saveBtn.textContent = "Save";
+              loader.classList.add("hidden");
             }
-        });
-    },
+          });
+        },
 
-    render(filterText = "") {
-        this.listEl.innerHTML = '';
-        const filtered = App.state.products.filter(p => p.name.toLowerCase().includes(filterText.toLowerCase()));
+        async deleteProduct(id) {
+          if (!confirm("Are you sure you want to delete this product?")) return;
 
-        if (filtered.length === 0) {
-            this.listEl.innerHTML = `<div class="p-8 text-center text-zinc-500 text-sm">No products found.</div>`;
+          try {
+            await ApiClient.delete(`/api/v1/products/${id}`);
+            App.state.products = App.state.products.filter((p) => p.id !== id);
+            this.render();
+          } catch (error) {
+            alert(`Error deleting: ${error.message}`);
+          }
+        },
+
+        render(filterText = "") {
+          this.tbodyEl.innerHTML = "";
+          this.cardsContainer.innerHTML = "";
+
+          const filtered = App.state.products.filter((p) =>
+            p.name.toLowerCase().includes(filterText.toLowerCase()),
+          );
+
+          if (filtered.length === 0) {
+            this.tbodyEl.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-zinc-500">No products found.</td></tr>`;
+            this.cardsContainer.innerHTML = `<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">No products found.</div>`;
             return;
-        }
+          }
 
-        filtered.forEach(p => {
-            // Note: Our backend GET /products also returns 'calculated_sale_price' natively, 
-            // but we can calculate it here or fetch it. Let's calculate for speed.
+          filtered.forEach((p) => {
             const cost = parseFloat(p.cost_price);
             const margin = parseFloat(p.margin_percentage);
-            const salePrice = cost * (1 + (margin / 100));
-            
-            this.listEl.innerHTML += `
-                <div class="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 md:gap-4 p-4 md:items-center hover:bg-zinc-900/50 transition-colors">
-                    <div class="font-medium text-white">${p.name}</div>
-                    <div class="flex justify-between md:block text-sm">
-                        <span class="md:hidden text-zinc-500 text-xs uppercase">Cost:</span>
-                        <span class="font-mono text-zinc-400">${CalculatorView.formatMoney(cost, p.cost_currency_code)}</span>
+            const salePrice = cost * (1 + margin / 100);
+            const formattedCost = CalculatorView.formatMoney(
+              cost,
+              p.cost_currency_code,
+            );
+            const formattedSale = CalculatorView.formatMoney(
+              salePrice,
+              p.cost_currency_code,
+            );
+
+            // 1. Render Desktop Table Row
+            this.tbodyEl.innerHTML += `
+                <tr class="hover:bg-zinc-900/50 transition-colors group">
+                    <td class="px-6 py-4 font-medium text-white">${p.name}</td>
+                    <td class="px-6 py-4 text-zinc-500 text-xs">${p.category || "-"}</td>
+                    <td class="px-6 py-4 font-mono text-zinc-400">${formattedCost}</td>
+                    <td class="px-6 py-4 font-mono text-emerald-500">+${p.margin_percentage}%</td>
+                    <td class="px-6 py-4 font-mono text-white font-bold">${formattedSale}</td>
+                    <td class="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="InventoryView.deleteProduct('${p.id}')" class="text-red-500 hover:text-red-400 font-bold text-xs uppercase tracking-wider">Delete</button>
+                    </td>
+                </tr>
+            `;
+
+            // 2. Render Mobile Soft Card
+            this.cardsContainer.innerHTML += `
+                <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 flex flex-col gap-3">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="text-lg font-bold text-white leading-tight">${p.name}</h4>
+                            <span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">${p.category || "-"}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-[0.65rem] text-zinc-500 uppercase tracking-widest">Sale Price</span>
+                            <span class="font-mono font-bold text-emerald-400">${formattedSale}</span>
+                        </div>
                     </div>
-                    <div class="flex justify-between md:block text-sm">
-                        <span class="md:hidden text-zinc-500 text-xs uppercase">Margin:</span>
-                        <span class="font-mono text-emerald-500">+${p.margin_percentage}%</span>
+                    <div class="flex justify-between items-center bg-black rounded p-2 border border-zinc-800/50">
+                        <span class="text-xs text-zinc-400 font-mono">Cost: ${formattedCost}</span>
+                        <span class="text-xs text-emerald-500 font-mono">+${p.margin_percentage}%</span>
                     </div>
-                    <div class="flex justify-between md:block text-sm">
-                        <span class="md:hidden text-zinc-500 text-xs uppercase">Sale:</span>
-                        <span class="font-mono text-white font-bold">${CalculatorView.formatMoney(salePrice, p.cost_currency_code)}</span>
-                    </div>
-                    <div class="mt-4 md:mt-0 md:text-right">
-                        <span class="text-xs text-zinc-700 font-mono">ID: ${p.id.split('-')[0]}</span>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <button class="bg-zinc-800 text-zinc-300 py-2 rounded text-xs font-bold uppercase tracking-wider">Edit</button>
+                        <button onclick="InventoryView.deleteProduct('${p.id}')" class="bg-red-900/20 text-red-500 border border-red-900/30 py-2 rounded text-xs font-bold uppercase tracking-wider">Delete</button>
                     </div>
                 </div>
             `;
-        });
-    }
-};
+          });
+        },
+      };
 
-// ==========================================
-// 5. CONFIGURATION VIEW MODULE
-// ==========================================
-const ConfigView = {
-    init() {
-        // Because the endpoint triggers a Content-Disposition attachment, 
-        // window.open gracefully handles the download using the active session cookies!
-        document.getElementById('config-export-btn').addEventListener('click', () => {
-            window.open('/api/v1/backup/export', '_blank');
-        });
-    }
-};
+      // ==========================================
+      // DAILY REPORTS LOGIC (Add to App.init)
+      // ==========================================
+      // Inside App.init(), after loading products and currencies, add this block:
+      /*
+        try {
+            // Set today's date on the UI
+            document.getElementById('report-date').textContent = new Date().toISOString().split('T')[0];
+            
+            // Attempt to fetch transactions (Will fail gracefully if backend isn't ready)
+            const txRes = await ApiClient.get('/api/v1/transactions');
+            const transactions = txRes.data; 
+            
+            // Assuming Transactions have { transaction_type: 'IN' | 'OUT', unit_price: "100.00", quantity: 1 }
+            let totalSales = 0; // INFLOW
+            let totalPurchases = 0; // OUTFLOW
+            
+            // Note: A true enterprise app would convert these to the base currency first 
+            // using the cross-rates logic, but we sum them directly here for the prototype.
+            transactions.forEach(tx => {
+                const amount = parseFloat(tx.unit_price) * tx.quantity;
+                if(tx.transaction_type === 'IN') totalSales += amount;
+                else if(tx.transaction_type === 'OUT') totalPurchases += amount;
+            });
+            
+            const netProfit = totalSales - totalPurchases;
+            
+            document.getElementById('metric-purchases').textContent = CalculatorView.formatMoney(totalPurchases, 'USD');
+            document.getElementById('metric-sales').textContent = CalculatorView.formatMoney(totalSales, 'USD');
+            document.getElementById('metric-profit').textContent = CalculatorView.formatMoney(netProfit, 'USD');
 
-// Boot the Application (Minor HTML fix for the status dot)
-document.addEventListener('DOMContentLoaded', () => {
-    // Add IDs to header status elements so App.init() can target them
-    const statusDot = document.querySelector('.bg-emerald-500');
-    if(statusDot) statusDot.id = 'sys-status-dot';
-    const statusText = document.querySelector('.text-zinc-300.tracking-wider');
-    if(statusText) statusText.id = 'sys-status-text';
-    
-    App.init();
-});
+        } catch (error) {
+            console.warn("Transactions API not ready yet. Daily report is mocked to zero.");
+            document.getElementById('metric-purchases').textContent = "$0.00";
+            document.getElementById('metric-sales').textContent = "$0.00";
+            document.getElementById('metric-profit').textContent = "$0.00";
+        }
+*/
 
+      // ==========================================
+      // 5. CONFIGURATION VIEW MODULE
+      // ==========================================
+      const ConfigView = {
+        init() {
+          // Because the endpoint triggers a Content-Disposition attachment,
+          // window.open gracefully handles the download using the active session cookies!
+          document
+            .getElementById("config-export-btn")
+            .addEventListener("click", () => {
+              window.open("/api/v1/backup/export", "_blank");
+            });
+        },
+      };
+
+      // Boot the Application (Minor HTML fix for the status dot)
+      document.addEventListener("DOMContentLoaded", () => {
+        // Add IDs to header status elements so App.init() can target them
+        const statusDot = document.querySelector(".bg-emerald-500");
+        if (statusDot) statusDot.id = "sys-status-dot";
+        const statusText = document.querySelector(
+          ".text-zinc-300.tracking-wider",
+        );
+        if (statusText) statusText.id = "sys-status-text";
+
+        App.init();
+      });
     </script>
-</body>
+  </body>
 </html>
