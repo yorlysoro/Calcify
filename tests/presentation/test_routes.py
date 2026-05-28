@@ -6,7 +6,7 @@ from flask.testing import FlaskClient
 from werkzeug.security import generate_password_hash
 
 # Infrastructure Imports (To interact with the in-memory DB during tests)
-from domain.models import Product
+from domain.models import Product, Transaction
 from infrastructure.repositories.sqlalchemy_repos import SqlAlchemyConfigRepository, SqlAlchemyProductRepository
 from infrastructure.database.models import CurrencyModel
 
@@ -292,3 +292,57 @@ def test_delete_product_success(client: FlaskClient, seed_admin_password: None) 
         check_repo = SqlAlchemyProductRepository(g.db_session)
         assert check_repo.get_by_id(target_id) is None
 
+def test_create_transaction_serialization_and_persistence(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    TDD Red Phase: Verifies that creating a transaction correctly persists 
+    the domain entity and strictly serializes Decimals/UUIDs back to the client.
+    """
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    # 1. Arrange: Seed a product to attach the transaction to
+    target_product_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyProductRepository(g.db_session)
+        repo.save(Product(
+            id=target_product_id, name="Ledger Product", category="Hardware",
+            cost_price=Decimal("10.00"), cost_currency_code="USD", margin_percentage=Decimal("0.00")
+        ))
+        g.db_session.commit()
+
+    # 2. Act: Execute POST request
+    payload = {
+        "product_id": str(target_product_id),
+        "transaction_type": "IN",
+        "quantity": 10,
+        "unit_price": "15.50",  # String to avoid JS float corruption
+        "currency_code": "USD"
+    }
+    response = client.post("/api/v1/transactions", json=payload)
+    
+    # 3. Assert
+    assert response.status_code == 201
+    response_data = response.get_json()["data"]
+    
+    assert isinstance(response_data["unit_price"], str)
+    assert response_data["unit_price"] == "15.50"
+    assert response_data["transaction_type"] == "IN"
+    # Verify ISO-8601 formatting presence
+    assert "T" in response_data["created_at"]
+
+
+def test_get_chronological_transactions(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    Verifies that the API returns the ledger history correctly serialized.
+    """
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    # Act
+    response = client.get("/api/v1/transactions")
+    
+    # Assert
+    assert response.status_code == 200
+    assert "data" in response.get_json()
+    assert isinstance(response.get_json()["data"], list)

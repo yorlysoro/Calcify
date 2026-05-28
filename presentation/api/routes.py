@@ -7,7 +7,7 @@ from decimal import Decimal, InvalidOperation
 from flask import Blueprint, request, jsonify, g, Response
 
 # Pure Domain Imports
-from domain.models import Product, Currency
+from domain.models import Product, Currency, Transaction
 
 # Infrastructure Imports (Adapters only, NO ORM models)
 from infrastructure.repositories.sqlalchemy_repos import (
@@ -16,7 +16,7 @@ from infrastructure.repositories.sqlalchemy_repos import (
     SqlAlchemyTransactionRepository
 )
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Import the Use Case
 from use_cases.export_backup import ExportBackupUseCase
@@ -209,6 +209,102 @@ def get_products() -> Tuple[Response, int]:
     except Exception as e:
         logger.error(f"Failed to fetch inventory products: {str(e)}")
         return jsonify({"error": "Internal server error while fetching inventory."}), 500
+
+@api_bp.route("/transactions", methods=["POST"])
+@login_required
+def create_transaction() -> Tuple[Response, int]:
+    """
+    Records a new financial movement (IN/OUT) in the system's ledger.
+    Protected endpoint: Requires active session.
+    """
+    payload = request.get_json()
+    if not payload:
+        return jsonify({"error": "Invalid or missing JSON payload."}), 400
+
+    tx_repo = SqlAlchemyTransactionRepository(session=g.db_session)
+    prod_repo = SqlAlchemyProductRepository(session=g.db_session)
+
+    try:
+        # Edge Validation & Type Casting
+        product_id = UUID(payload["product_id"])
+        
+        # Referencial Integrity Check (Foreign Key Guard)
+        if not prod_repo.get_by_id(product_id):
+            return jsonify({"error": f"Product {product_id} does not exist."}), 400
+            
+        new_tx = Transaction(
+            id=uuid4(),
+            product_id=product_id,
+            transaction_type=str(payload["transaction_type"]),
+            quantity=int(payload["quantity"]),
+            unit_price=Decimal(str(payload["unit_price"])),
+            currency_code=str(payload["currency_code"]),
+            created_at=datetime.now(timezone.utc) # Strict timezone awareness
+        )
+
+        # Persistence (Unit of Work)
+        tx_repo.save(new_tx)
+        g.db_session.commit()
+
+        # Serialization Helper (Inline Mapping for O(1) response)
+        serialized_tx = {
+            "id": str(new_tx.id),
+            "product_id": str(new_tx.product_id),
+            "transaction_type": new_tx.transaction_type,
+            "quantity": new_tx.quantity,
+            "unit_price": str(new_tx.unit_price), # Strict String casting
+            "currency_code": new_tx.currency_code,
+            "created_at": new_tx.created_at.isoformat()
+        }
+
+        return jsonify({
+            "message": "Transaction recorded successfully.",
+            "data": serialized_tx
+        }), 201
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing required field: {str(e)}"}), 400
+    except ValueError as e:
+        return jsonify({"error": f"Invalid data format: {str(e)}"}), 400
+    except InvalidOperation:
+        return jsonify({"error": "Financial values must be valid decimal numbers."}), 400
+    except Exception as e:
+        g.db_session.rollback()
+        logger.error(f"Failed to record transaction: {str(e)}")
+        return jsonify({"error": "Failed to process the transaction request."}), 500
+
+
+@api_bp.route("/transactions", methods=["GET"])
+@login_required
+def get_transactions() -> Tuple[Response, int]:
+    """
+    Retrieves the chronological ledger history of all transactions.
+    Protected endpoint: Requires active session.
+    """
+    repo = SqlAlchemyTransactionRepository(session=g.db_session)
+    
+    try:
+        transactions: List[Transaction] = repo.get_all()
+        
+        # O(N) Serialization block
+        response_data: List[Dict[str, Any]] = [
+            {
+                "id": str(tx.id),
+                "product_id": str(tx.product_id),
+                "transaction_type": tx.transaction_type,
+                "quantity": tx.quantity,
+                "unit_price": str(tx.unit_price),
+                "currency_code": tx.currency_code,
+                "created_at": tx.created_at.isoformat()
+            }
+            for tx in transactions
+        ]
+        
+        return jsonify({"data": response_data}), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch transaction ledger: {str(e)}")
+        return jsonify({"error": "Internal server error while fetching transactions."}), 500
 
 @api_bp.route("/backup/export", methods=["GET"])
 @login_required
