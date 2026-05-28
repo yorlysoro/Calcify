@@ -1,7 +1,7 @@
 from presentation.api.auth import login_required
 import logging
 from typing import Optional, Tuple, Dict, Any, List
-from uuid import UUID
+from uuid import UUID, uuid4
 from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, request, jsonify, g, Response
