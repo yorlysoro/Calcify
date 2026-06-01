@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Domain:** `category` field in `Product` entity with `"Uncategorized"` default, including backward-compatible migrations and API mapping (`domain/models.py`, `infrastructure/database/models.py`, `presentation/api/routes.py`).
+- **Use Cases:** `ExportBackupUseCase` orchestrating full system backup with strict Decimal/UUID/DateTime serialization to JSON-safe primitives (`use_cases/export_backup.py`).
+- **API:** `GET /api/v1/products` inventory listing endpoint returning serialized product list (`presentation/api/routes.py`).
+- **API:** `DELETE /api/v1/products/<id>` hard delete lifecycle for products with repo interface contract (`presentation/api/routes.py`, `infrastructure/repositories/interfaces.py`).
+- **API:** Transaction ledger CRUD endpoints (`POST /api/v1/transactions`, `GET /api/v1/transactions`) with strict JSON financial serialization, foreign key integrity checks, and timezone-aware timestamps (`presentation/api/routes.py`).
+- **API:** Protected `GET /api/v1/backup/export` endpoint forcing file download with `Content-Disposition` headers (`presentation/api/routes.py`).
+- **Frontend:** Responsive single-page application layout with modular mock views and real-time offline JS currency conversion logic (`presentation/templates/index.html`).
+- **Frontend:** `ApiClient` interceptor refactoring SPA views to consume real backend API data for calculator matrix, inventory CRUD, and JSON export (`presentation/templates/index.html`).
+- **Frontend:** Dual responsive UI for inventory management, live pricing modal, and async daily closing reports (`presentation/templates/index.html`).
+- **Ops:** `iniciar_debian.sh` Linux launcher with Python/venv verification, dependency installation, LAN IP resolution, and styled banner.
+- **Ops:** `instalar_y_correr.bat` Windows launcher with Python auto-installer, admin elevation, and automatic browser launch.
+- **Docs:** `AGENTS.md` with architecture layer rules, testing conventions, repo patterns, and key file references.
+
+### Fixed
+
+- **API:** Resolved `NameError` on `uuid4` in transaction route handlers by adding missing import (`presentation/api/routes.py`).
+
 ## [0.4.0] - 2026-05-24
 
 ### Added
