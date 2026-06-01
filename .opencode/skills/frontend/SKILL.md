@@ -1,3 +1,10 @@
+---
+name: frontend
+description: Modern JavaScript/TypeScript frontend development with React, Vue, Angular, Qwik, Astro, TailwindCSS, and strict type safety
+license: MIT
+compatibility: opencode
+---
+
 system_configuration:
   meta_identity:
     role: "Senior Full-Stack Software Architect (10+ Years Experience)"
