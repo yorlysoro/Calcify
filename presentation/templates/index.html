@@ -403,6 +403,117 @@
             </div>
           </div>
         </div>
+        <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 mb-8 shadow-2xl">
+          <h3
+            class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"
+          >
+            <span>💱</span> Currency Management
+          </h3>
+          <form id="config-currency-form" class="space-y-4 mb-6">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label
+                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                  >Code</label
+                >
+                <input
+                  type="text"
+                  id="cur-code"
+                  maxlength="3"
+                  required
+                  placeholder="USD"
+                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono uppercase focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                  >Name</label
+                >
+                <input
+                  type="text"
+                  id="cur-name"
+                  required
+                  placeholder="US Dollar"
+                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                  >Symbol</label
+                >
+                <input
+                  type="text"
+                  id="cur-symbol"
+                  required
+                  placeholder="$"
+                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              id="config-currency-btn"
+              class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50"
+            >
+              Add Currency
+            </button>
+          </form>
+          <div
+            id="config-currency-list"
+            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
+          ></div>
+        </div>
+
+        <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 mb-8 shadow-2xl">
+          <h3
+            class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"
+          >
+            <span>📈</span> Exchange Rates
+          </h3>
+          <form id="config-rate-form" class="space-y-4 mb-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label
+                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                  >Currency</label
+                >
+                <select
+                  id="rate-currency-code"
+                  required
+                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                ></select>
+              </div>
+              <div>
+                <label
+                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                  >Rate</label
+                >
+                <input
+                  type="number"
+                  step="0.000001"
+                  id="rate-value"
+                  required
+                  placeholder="1.000000"
+                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              id="config-rate-btn"
+              class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50"
+            >
+              Add Rate
+            </button>
+          </form>
+          <div
+            id="config-rates-list"
+            class="grid gap-2"
+          ></div>
+        </div>
+
         <div class="mb-6">
           <h2 class="text-2xl font-light text-white">
             System <strong class="font-bold text-emerald-500">Settings</strong>
@@ -514,6 +625,9 @@
             body: JSON.stringify(data),
           });
         },
+        delete(url) {
+          return this._request(url, { method: "DELETE" });
+        },
       };
 
       // ==========================================
@@ -524,20 +638,21 @@
           currentTab: "view-calculator",
           currencies: [],
           products: [],
-          // Fallback rates until backend implements an Exchange Rate API
-          ratesFallback: { USD: 1.0, VES: 36.5, EUR: 0.92, COP: 3850.0 },
+          rates: [],
         },
 
         async init() {
           // Parallel data fetching for maximum performance
           try {
-            const [curRes, prodRes] = await Promise.all([
+            const [curRes, prodRes, ratesRes] = await Promise.all([
               ApiClient.get("/api/v1/currencies"),
               ApiClient.get("/api/v1/products"),
+              ApiClient.get("/api/v1/rates/latest"),
             ]);
 
             this.state.currencies = curRes.data;
             this.state.products = prodRes.data;
+            this.state.rates = ratesRes.data;
 
             // Update UI Status
             document.getElementById("sys-status-text").textContent = "Online";
@@ -606,10 +721,15 @@
           }).format(value);
         },
 
+        getRate(code) {
+          const r = App.state.rates.find(x => x.currency_code === code);
+          return r ? parseFloat(r.rate) : 1.0;
+        },
+
         render() {
           const amount = parseFloat(this.inputEl.value) || 0;
           const baseCur = this.selectEl.value;
-          const baseRate = App.state.ratesFallback[baseCur] || 1;
+          const baseRate = this.getRate(baseCur);
 
           this.resultsEl.innerHTML = "";
           if (!baseCur) return;
@@ -617,7 +737,7 @@
           App.state.currencies.forEach((cur) => {
             if (cur.code === baseCur) return;
 
-            const targetRate = App.state.ratesFallback[cur.code] || 1;
+            const targetRate = this.getRate(cur.code);
             const finalVal = (amount / baseRate) * targetRate;
             const exchangeRate = (targetRate / baseRate).toFixed(4);
 
@@ -859,6 +979,72 @@
       // ==========================================
       const ConfigView = {
         init() {
+          this.renderCurrencies();
+          this.renderRates();
+
+          const rateSelect = document.getElementById("rate-currency-code");
+          rateSelect.innerHTML = "";
+          App.state.currencies.forEach((cur) => {
+            const opt = document.createElement("option");
+            opt.value = cur.code;
+            opt.textContent = `${cur.code} - ${cur.name}`;
+            rateSelect.appendChild(opt);
+          });
+
+          document
+            .getElementById("config-currency-form")
+            .addEventListener("submit", async (e) => {
+              e.preventDefault();
+              const btn = document.getElementById("config-currency-btn");
+              btn.disabled = true;
+
+              const payload = {
+                code: document.getElementById("cur-code").value,
+                name: document.getElementById("cur-name").value,
+                symbol: document.getElementById("cur-symbol").value,
+              };
+
+              try {
+                await ApiClient.post("/api/v1/currencies", payload);
+                const res = await ApiClient.get("/api/v1/currencies");
+                App.state.currencies = res.data;
+                this.renderCurrencies();
+                document.getElementById("config-currency-form").reset();
+                CalculatorView.init();
+                InventoryView.initModal();
+              } catch (error) {
+                alert(`Error adding currency: ${error.message}`);
+              } finally {
+                btn.disabled = false;
+              }
+            });
+
+          document
+            .getElementById("config-rate-form")
+            .addEventListener("submit", async (e) => {
+              e.preventDefault();
+              const btn = document.getElementById("config-rate-btn");
+              btn.disabled = true;
+
+              const payload = {
+                currency_code: document.getElementById("rate-currency-code").value,
+                rate: document.getElementById("rate-value").value,
+              };
+
+              try {
+                await ApiClient.post("/api/v1/rates", payload);
+                const res = await ApiClient.get("/api/v1/rates/latest");
+                App.state.rates = res.data;
+                document.getElementById("config-rate-form").reset();
+                this.renderRates();
+                CalculatorView.render();
+              } catch (error) {
+                alert(`Error adding rate: ${error.message}`);
+              } finally {
+                btn.disabled = false;
+              }
+            });
+
           // Because the endpoint triggers a Content-Disposition attachment,
           // window.open gracefully handles the download using the active session cookies!
           document
@@ -866,6 +1052,58 @@
             .addEventListener("click", () => {
               window.open("/api/v1/backup/export", "_blank");
             });
+        },
+
+        renderCurrencies() {
+          const container = document.getElementById("config-currency-list");
+          container.innerHTML = "";
+          App.state.currencies.forEach((cur) => {
+            const card = document.createElement("div");
+            card.className =
+              "bg-black border border-zinc-800 rounded-lg p-4 text-center";
+            card.innerHTML = `
+                <div class="text-2xl mb-1">${cur.symbol}</div>
+                <div class="font-mono font-bold text-emerald-400 text-sm">${cur.code}</div>
+                <div class="text-xs text-zinc-500 truncate">${cur.name}</div>
+                ${cur.is_main ? '<div class="text-[0.6rem] uppercase tracking-widest text-amber-500 mt-1">★ Main</div>' : ""}
+              `;
+            container.appendChild(card);
+          });
+        },
+
+        renderRates() {
+          const container = document.getElementById("config-rates-list");
+          container.innerHTML = "";
+          if (App.state.rates.length === 0) {
+            container.innerHTML = '<div class="text-zinc-600 text-sm text-center py-4">No rates configured.</div>';
+            return;
+          }
+          App.state.rates.forEach((r) => {
+            const row = document.createElement("div");
+            row.className =
+              "bg-black border border-zinc-800 rounded-lg px-4 py-3 flex items-center justify-between";
+            row.innerHTML = `
+                <div>
+                  <span class="font-mono font-bold text-emerald-400 text-sm">${r.currency_code}</span>
+                  <span class="font-mono text-white text-sm ml-3">${r.rate}</span>
+                </div>
+                <button onclick="ConfigView.deleteRate('${r.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold uppercase tracking-wider">Delete</button>
+              `;
+            container.appendChild(row);
+          });
+        },
+
+        async deleteRate(id) {
+          if (!confirm("Delete this exchange rate?")) return;
+          try {
+            await ApiClient.delete(`/api/v1/rates/${id}`);
+            const res = await ApiClient.get("/api/v1/rates/latest");
+            App.state.rates = res.data;
+            this.renderRates();
+            CalculatorView.render();
+          } catch (error) {
+            alert(`Error deleting rate: ${error.message}`);
+          }
         },
       };
 

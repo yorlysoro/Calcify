@@ -29,12 +29,18 @@
 
 from typing import Optional, List
 from uuid import UUID
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import timezone
 
-from domain.models import Currency, Product, Transaction
-from infrastructure.database.models import CurrencyModel, ProductModel, ConfigModel, TransactionModel
-from infrastructure.repositories.interfaces import ICurrencyRepository, IProductRepository, IConfigRepository, ITransactionRepository
+from domain.models import Currency, Product, Transaction, CurrencyRate
+from infrastructure.database.models import (
+    CurrencyModel, ProductModel, ConfigModel, TransactionModel, CurrencyRateModel,
+)
+from infrastructure.repositories.interfaces import (
+    ICurrencyRepository, IProductRepository, IConfigRepository, ITransactionRepository,
+    ICurrencyRateRepository,
+)
 
 
 class SqlAlchemyCurrencyRepository(ICurrencyRepository):
@@ -68,6 +74,16 @@ class SqlAlchemyCurrencyRepository(ICurrencyRepository):
             symbol=model.symbol,
             is_main=model.is_main
         )
+
+    def save(self, currency: Currency) -> None:
+        """Maps a domain Currency entity to an ORM model and persists it."""
+        model: CurrencyModel = CurrencyModel(
+            code=currency.code,
+            name=currency.name,
+            symbol=currency.symbol,
+            is_main=currency.is_main,
+        )
+        self._session.merge(model)
 
     def get_all(self) -> List[Currency]:
         """Retrieves all currencies mapped to domain entities."""
@@ -159,6 +175,84 @@ class SqlAlchemyProductRepository(IProductRepository):
         self._session.delete(model)
         # Note: Deliberately omitting self._session.commit() to respect the Unit of Work
         return True
+
+class SqlAlchemyCurrencyRateRepository(ICurrencyRateRepository):
+    """
+    SQLAlchemy implementation of the currency rate repository interface.
+    Handles the boundary mapping between CurrencyRateModel and domain CurrencyRate.
+    """
+
+    def __init__(self, session: Session) -> None:
+        self._session: Session = session
+
+    def save(self, rate: CurrencyRate) -> None:
+        """Maps a domain CurrencyRate to an ORM model and persists it via merge."""
+        model: CurrencyRateModel = CurrencyRateModel(
+            id=rate.id,
+            currency_code=rate.currency_code,
+            rate=rate.rate,
+            created_at=rate.created_at,
+        )
+        self._session.merge(model)
+
+    def get_latest_by_code(self, code: str) -> Optional[CurrencyRate]:
+        """Returns the most recent CurrencyRate for the given code, or None."""
+        model: Optional[CurrencyRateModel] = (
+            self._session.query(CurrencyRateModel)
+            .filter_by(currency_code=code)
+            .order_by(CurrencyRateModel.created_at.desc())
+            .first()
+        )
+        if not model:
+            return None
+        return CurrencyRate(
+            id=model.id,
+            currency_code=model.currency_code,
+            rate=model.rate,
+            created_at=model.created_at,
+        )
+
+    def get_all_latest(self) -> List[CurrencyRate]:
+        """Returns the most recent CurrencyRate for each currency code."""
+        subq = (
+            self._session.query(
+                CurrencyRateModel.currency_code,
+                func.max(CurrencyRateModel.created_at).label("max_created_at"),
+            )
+            .group_by(CurrencyRateModel.currency_code)
+            .subquery()
+        )
+        models: List[CurrencyRateModel] = (
+            self._session.query(CurrencyRateModel)
+            .join(
+                subq,
+                (CurrencyRateModel.currency_code == subq.c.currency_code)
+                & (CurrencyRateModel.created_at == subq.c.max_created_at),
+            )
+            .all()
+        )
+        return [
+            CurrencyRate(
+                id=m.id,
+                currency_code=m.currency_code,
+                rate=m.rate,
+                created_at=m.created_at,
+            )
+            for m in models
+        ]
+
+    def delete(self, rate_id: UUID) -> bool:
+        """Deletes a CurrencyRate by ID. Returns True if found and removed."""
+        model: Optional[CurrencyRateModel] = (
+            self._session.query(CurrencyRateModel)
+            .filter_by(id=rate_id)
+            .first()
+        )
+        if not model:
+            return False
+        self._session.delete(model)
+        return True
+
 
 class SqlAlchemyConfigRepository(IConfigRepository):
     """

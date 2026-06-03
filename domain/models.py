@@ -181,6 +181,24 @@ class Product:
         )
 
 @dataclass(slots=True)
+class CurrencyRate:
+    """
+    Represents a financial exchange rate for a specific currency at a point in time.
+
+    Attributes:
+        id (UUID): The unique identifier for this rate record.
+        currency_code (str): The ISO 4217 currency code this rate applies to.
+        rate (Decimal): The exchange rate value relative to the main/base currency.
+        created_at (datetime): A strict timezone-aware timestamp.
+    """
+
+    id: UUID
+    currency_code: str
+    rate: Decimal
+    created_at: datetime
+
+
+@dataclass(slots=True)
 class Transaction:
     """
     Represents a movement of inventory (IN or OUT) coupled with its financial snapshot 

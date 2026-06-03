@@ -30,13 +30,18 @@
 import pytest
 from decimal import Decimal
 from uuid import uuid4
+from datetime import datetime, timezone
 from flask import g
 from flask.testing import FlaskClient
 from werkzeug.security import generate_password_hash
 
 # Infrastructure Imports (To interact with the in-memory DB during tests)
-from domain.models import Product, Transaction
-from infrastructure.repositories.sqlalchemy_repos import SqlAlchemyConfigRepository, SqlAlchemyProductRepository
+from domain.models import Product, Transaction, CurrencyRate
+from infrastructure.repositories.sqlalchemy_repos import (
+    SqlAlchemyConfigRepository,
+    SqlAlchemyProductRepository,
+    SqlAlchemyCurrencyRateRepository,
+)
 from infrastructure.database.models import CurrencyModel
 
 
@@ -359,6 +364,92 @@ def test_create_transaction_serialization_and_persistence(client: FlaskClient, s
     assert response_data["transaction_type"] == "IN"
     # Verify ISO-8601 formatting presence
     assert "T" in response_data["created_at"]
+
+
+def test_create_currency_success(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    Tests successful creation of a new currency via the API.
+    Verifies HTTP 201 with the serialized currency data matching the payload.
+    """
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    payload = {
+        "code": "GBP",
+        "name": "British Pound",
+        "symbol": "\u00a3",
+        "is_main": False,
+    }
+    response = client.post("/api/v1/currencies", json=payload)
+    assert response.status_code == 201
+    data = response.get_json()["data"]
+    assert data["code"] == "GBP"
+    assert data["name"] == "British Pound"
+    assert data["symbol"] == "\u00a3"
+    assert data["is_main"] is False
+
+
+def test_create_currency_duplicate(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    Tests that attempting to create a duplicate currency returns a graceful error.
+    Ensures no 500 crash on unique constraint violation.
+    """
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        eur = CurrencyModel(code="EUR", name="Euro", symbol="\u20ac", is_main=False)
+        g.db_session.merge(eur)
+        g.db_session.commit()
+
+    payload = {"code": "EUR", "name": "Euro", "symbol": "\u20ac", "is_main": False}
+    response = client.post("/api/v1/currencies", json=payload)
+    assert response.status_code in (400, 409)
+    assert "error" in response.get_json()
+
+
+def test_create_currency_rate(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    Tests creating a new exchange rate via POST /api/v1/rates.
+    Asserts 201 and strict string serialization of the Decimal rate.
+    """
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    payload = {"currency_code": "EUR", "rate": "1.05"}
+    response = client.post("/api/v1/rates", json=payload)
+    assert response.status_code == 201
+    data = response.get_json()["data"]
+    assert data["currency_code"] == "EUR"
+    assert isinstance(data["rate"], str)
+    assert data["rate"] == "1.05"
+    assert "T" in data["created_at"]
+
+
+def test_get_latest_currency_rates(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    Seeds two CurrencyRate records for the same code and verifies
+    GET /api/v1/rates/latest returns only the most recent one.
+    """
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyCurrencyRateRepository(g.db_session)
+        now = datetime.now(timezone.utc)
+        repo.save(CurrencyRate(id=uuid4(), currency_code="EUR", rate=Decimal("1.05"), created_at=now))
+        repo.save(CurrencyRate(id=uuid4(), currency_code="EUR", rate=Decimal("1.10"), created_at=datetime.now(timezone.utc)))
+        g.db_session.commit()
+
+    response = client.get("/api/v1/rates/latest")
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert len(data) >= 1
+    eur_rates = [r for r in data if r["currency_code"] == "EUR"]
+    assert len(eur_rates) == 1
+    assert eur_rates[0]["rate"] == "1.100000"
 
 
 def test_get_chronological_transactions(client: FlaskClient, seed_admin_password: None) -> None:

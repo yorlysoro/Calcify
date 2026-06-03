@@ -28,6 +28,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
+import os
 from typing import Optional
 from flask import Flask, g
 from sqlalchemy import create_engine, Engine
@@ -46,6 +47,7 @@ from setup_security import initialize_security
 # Blueprint Imports
 from presentation.api.routes import api_bp
 from presentation.api.auth import auth_bp
+from presentation.web.routes import web_bp
 
 # Set up global logging config for the application
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -64,7 +66,7 @@ def create_app(config_name: Optional[str] = None) -> Flask:
         Flask: The configured WSGI application object.
     """
     # 1. Instantiate the core framework
-    app: Flask = Flask(__name__)
+    app: Flask = Flask(__name__, template_folder="presentation/templates")
 
     # 2. Dynamic Configuration & Engine Setup
     if config_name == "testing":
@@ -104,12 +106,23 @@ def create_app(config_name: Optional[str] = None) -> Flask:
             # Idempotent Security Bootstrap (Prevents locking out active sessions)
             initialize_security("Calcify")
 
-            # Programmatic Migrations
-            try:
-                run_migrations("Calcify")
-            except Exception as e:
-                logger.critical(f"Application boot aborted. Migration failed: {str(e)}")
-                raise SystemExit(1)
+            # Programmatic Migrations (graceful fallback if alembic.ini is absent)
+            alembic_ini_path: str = os.path.join(
+                os.path.dirname(__file__), "alembic.ini"
+            )
+            if os.path.exists(alembic_ini_path):
+                try:
+                    run_migrations("Calcify")
+                except Exception as e:
+                    logger.critical(
+                        f"Application boot aborted. Migration failed: {str(e)}"
+                    )
+                    raise SystemExit(1)
+            else:
+                logger.warning(
+                    "alembic.ini not found, falling back to raw SQLAlchemy initialization"
+                )
+                Base.metadata.create_all(bind=engine)
 
         # Dynamically inject the cryptographic App Secret Key into Flask
         with SessionLocal() as temp_session:
@@ -149,9 +162,7 @@ def create_app(config_name: Optional[str] = None) -> Flask:
     # 5. Blueprint Registration (Enforcing the Golden Rule)
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
-
-    # <NOTE> Future UI Blueprint registration goes here.
-    # e.g., app.register_blueprint(web_bp)
+    app.register_blueprint(web_bp)
 
     return app
 

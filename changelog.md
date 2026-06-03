@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-02
+
+### Added
+
+- **Domain:** `CurrencyRate` pure domain entity with UUID, currency_code, Decimal rate, and timezone-aware datetime (`domain/models.py`).
+- **Infrastructure:** `CurrencyRateModel` ORM model with `currency_rates` table using `Numeric(14, 6)` precision (`infrastructure/database/models.py`).
+- **Infrastructure:** `ICurrencyRateRepository` interface and `SqlAlchemyCurrencyRateRepository` implementation with `save`, `get_latest_by_code`, `get_all_latest` (grouped-max subquery), and `delete` methods (`infrastructure/repositories/interfaces.py`, `infrastructure/repositories/sqlalchemy_repos.py`).
+- **API:** `POST /api/v1/rates` endpoint for creating exchange rate records (`presentation/api/routes.py`).
+- **API:** `GET /api/v1/rates/latest` endpoint returning the most recent rate per currency code (`presentation/api/routes.py`).
+- **API:** `DELETE /api/v1/rates/<id>` endpoint for removing rate records (`presentation/api/routes.py`).
+- **API:** `POST /api/v1/currencies` endpoint for creating new currencies with duplicate detection (`presentation/api/routes.py`).
+- **Frontend:** Currency Management panel (💱) in Config view with CRUD form and live grid (`presentation/templates/index.html`).
+- **Frontend:** Exchange Rates panel (📈) in Config view with rate creation form, live list, and delete support (`presentation/templates/index.html`).
+- **Frontend:** Calculator live conversion now uses backend rates from `GET /api/v1/rates/latest` instead of hardcoded fallbacks (`presentation/templates/index.html`).
+- **Frontend:** `web_bp` Blueprint with `GET /` (index) and `GET /login` routes serving `index.html` and `login.html` templates (`presentation/web/routes.py`).
+- **Testing:** `test_create_currency_success` and `test_create_currency_duplicate` integration tests for currency creation (`tests/presentation/test_routes.py`).
+- **Testing:** `test_create_currency_rate` and `test_get_latest_currency_rates` integration tests for rate management (`tests/presentation/test_routes.py`).
+
+### Fixed
+
+- **Setup:** `Base.metadata.create_all(bind=engine)` called before session usage to prevent "table not found" errors on fresh installs (`setup_security.py`).
+- **Migrations:** Graceful fallback to `Base.metadata.create_all()` when `alembic.ini` is absent, preventing crash on fresh installations (`app.py`).
+- **Routing:** Added `GET /login` route to resolve HTTP 405 errors when unauthenticated users are redirected to the login page (`presentation/web/routes.py`).
+- **Routing:** Flask constructor now explicitly sets `template_folder="presentation/templates"` (`app.py`).
+- **Repository:** Added `save` and `get_by_code` methods to `ICurrencyRepository` interface and `SqlAlchemyCurrencyRepository` implementation (`infrastructure/repositories/interfaces.py`, `infrastructure/repositories/sqlalchemy_repos.py`).
+
 ## [0.5.0] - 2026-05-31
 
 ### Added

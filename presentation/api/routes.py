@@ -36,13 +36,14 @@ from decimal import Decimal, InvalidOperation
 from flask import Blueprint, request, jsonify, g, Response
 
 # Pure Domain Imports
-from domain.models import Product, Currency, Transaction
+from domain.models import Product, Currency, Transaction, CurrencyRate
 
 # Infrastructure Imports (Adapters only, NO ORM models)
 from infrastructure.repositories.sqlalchemy_repos import (
     SqlAlchemyProductRepository,
     SqlAlchemyCurrencyRepository,
-    SqlAlchemyTransactionRepository
+    SqlAlchemyTransactionRepository,
+    SqlAlchemyCurrencyRateRepository,
 )
 
 from datetime import datetime, timezone
@@ -82,6 +83,60 @@ def get_currencies() -> Tuple[Response, int]:
         logger.error(f"Failed to fetch currencies: {str(e)}")
         return (
             jsonify({"error": "Internal server error while fetching currencies."}),
+            500,
+        )
+
+
+@api_bp.route("/currencies", methods=["POST"])
+@login_required
+def create_currency() -> Tuple[Response, int]:
+    """
+    Creates a new currency in the system.
+    Expects a JSON payload with code, name, symbol, and optional is_main.
+    """
+    payload: Optional[Dict[str, Any]] = request.get_json()
+    if not payload:
+        return jsonify({"error": "Invalid or missing JSON payload."}), 400
+
+    repo = SqlAlchemyCurrencyRepository(session=g.db_session)
+
+    try:
+        code: str = str(payload["code"]).upper()
+        name: str = str(payload["name"])
+        symbol: str = str(payload["symbol"])
+        is_main: bool = bool(payload.get("is_main", False))
+
+        existing: Optional[Currency] = repo.get_by_code(code)
+        if existing is not None:
+            return jsonify({"error": f"Currency {code} already exists."}), 409
+
+        new_currency: Currency = Currency(
+            code=code, name=name, symbol=symbol, is_main=is_main
+        )
+
+        repo.save(new_currency)
+        g.db_session.commit()
+
+        return (
+            jsonify({
+                "message": "Currency created successfully.",
+                "data": {
+                    "code": new_currency.code,
+                    "name": new_currency.name,
+                    "symbol": new_currency.symbol,
+                    "is_main": new_currency.is_main,
+                },
+            }),
+            201,
+        )
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing required field: {str(e)}"}), 400
+    except Exception as e:
+        g.db_session.rollback()
+        logger.error(f"Failed to create currency: {str(e)}")
+        return (
+            jsonify({"error": "Failed to process the currency creation request."}),
             500,
         )
 
@@ -334,6 +389,108 @@ def get_transactions() -> Tuple[Response, int]:
     except Exception as e:
         logger.error(f"Failed to fetch transaction ledger: {str(e)}")
         return jsonify({"error": "Internal server error while fetching transactions."}), 500
+
+@api_bp.route("/rates", methods=["POST"])
+@login_required
+def create_currency_rate() -> Tuple[Response, int]:
+    """
+    Creates a new exchange rate entry for a currency.
+    Expects JSON with currency_code and rate.
+    """
+    payload: Optional[Dict[str, Any]] = request.get_json()
+    if not payload:
+        return jsonify({"error": "Invalid or missing JSON payload."}), 400
+
+    repo = SqlAlchemyCurrencyRateRepository(session=g.db_session)
+
+    try:
+        currency_code: str = str(payload["currency_code"]).upper()
+        rate: Decimal = Decimal(str(payload["rate"]))
+
+        new_rate: CurrencyRate = CurrencyRate(
+            id=uuid4(),
+            currency_code=currency_code,
+            rate=rate,
+            created_at=datetime.now(timezone.utc),
+        )
+
+        repo.save(new_rate)
+        g.db_session.commit()
+
+        return (
+            jsonify({
+                "message": "Rate created successfully.",
+                "data": {
+                    "id": str(new_rate.id),
+                    "currency_code": new_rate.currency_code,
+                    "rate": str(new_rate.rate),
+                    "created_at": new_rate.created_at.isoformat(),
+                },
+            }),
+            201,
+        )
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing required field: {str(e)}"}), 400
+    except InvalidOperation:
+        return jsonify({"error": "Rate must be a valid decimal number."}), 400
+    except Exception as e:
+        g.db_session.rollback()
+        logger.error(f"Failed to create rate: {str(e)}")
+        return jsonify({"error": "Failed to process rate creation."}), 500
+
+
+@api_bp.route("/rates/latest", methods=["GET"])
+@login_required
+def get_latest_currency_rates() -> Tuple[Response, int]:
+    """
+    Retrieves the most recent exchange rate for each currency.
+    """
+    repo = SqlAlchemyCurrencyRateRepository(session=g.db_session)
+
+    try:
+        rates: List[CurrencyRate] = repo.get_all_latest()
+        response_data: List[Dict[str, Any]] = [
+            {
+                "id": str(r.id),
+                "currency_code": r.currency_code,
+                "rate": str(r.rate),
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in rates
+        ]
+        return jsonify({"data": response_data}), 200
+
+    except Exception as e:
+        logger.error(f"Failed to fetch latest rates: {str(e)}")
+        return jsonify({"error": "Internal server error while fetching rates."}), 500
+
+
+@api_bp.route("/rates/<rate_id>", methods=["DELETE"])
+@login_required
+def delete_currency_rate(rate_id: str) -> Tuple[Response, int]:
+    """
+    Deletes a specific currency rate record by its UUID.
+    """
+    repo = SqlAlchemyCurrencyRateRepository(session=g.db_session)
+
+    try:
+        parsed_id: UUID = UUID(rate_id)
+        deleted: bool = repo.delete(parsed_id)
+
+        if not deleted:
+            return jsonify({"error": f"Rate with ID {rate_id} not found."}), 404
+
+        g.db_session.commit()
+        return jsonify({"message": "Rate deleted successfully."}), 200
+
+    except ValueError:
+        return jsonify({"error": "Invalid rate ID format. Must be a valid UUID."}), 400
+    except Exception as e:
+        g.db_session.rollback()
+        logger.error(f"Failed to delete rate {rate_id}: {str(e)}")
+        return jsonify({"error": "Internal server error."}), 500
+
 
 @api_bp.route("/backup/export", methods=["GET"])
 @login_required

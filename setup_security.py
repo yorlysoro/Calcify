@@ -36,6 +36,7 @@ from sqlalchemy.orm import Session
 from werkzeug.security import generate_password_hash
 
 # Infrastructure imports
+from infrastructure.database.models import Base, ConfigModel
 from infrastructure.database.session import get_db_path
 from infrastructure.repositories.sqlalchemy_repos import SqlAlchemyConfigRepository
 
@@ -60,7 +61,10 @@ def initialize_security(app_name: str = "Calcify") -> None:
     db_uri: str = f"sqlite:///{get_db_path(app_name).as_posix()}"
     engine: Engine = create_engine(db_uri)
 
-    # 2. Scoped Database Session (Context Manager ensures safe teardown)
+    # 2. Ensure all tables exist before operating on them
+    Base.metadata.create_all(bind=engine)
+
+    # 3. Scoped Database Session (Context Manager ensures safe teardown)
     with Session(engine) as session:
         repo: SqlAlchemyConfigRepository = SqlAlchemyConfigRepository(session)
 

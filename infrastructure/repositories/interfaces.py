@@ -30,7 +30,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 from uuid import UUID
-from domain.models import Currency, Product, Transaction
+from domain.models import Currency, Product, Transaction, CurrencyRate
 
 # <ABC> stands for Abstract Base Class
 class ICurrencyRepository(ABC):
@@ -41,6 +41,11 @@ class ICurrencyRepository(ABC):
     @abstractmethod
     def get_by_code(self, code: str) -> Optional[Currency]:
         """Retrieves a pure Currency domain entity by its ISO code."""
+        pass
+
+    @abstractmethod
+    def save(self, currency: Currency) -> None:
+        """Persists a pure Currency domain entity to the data store."""
         pass
 
     @abstractmethod
@@ -75,6 +80,32 @@ class IProductRepository(ABC):
         Returns True if successful, False if the product was not found.
         """
         pass
+
+class ICurrencyRateRepository(ABC):
+    """
+    Interface defining the required database operations for CurrencyRate entities.
+    """
+
+    @abstractmethod
+    def save(self, rate: CurrencyRate) -> None:
+        """Persists a CurrencyRate domain entity to the data store."""
+        pass
+
+    @abstractmethod
+    def get_latest_by_code(self, code: str) -> Optional[CurrencyRate]:
+        """Retrieves the most recent CurrencyRate for a given currency code."""
+        pass
+
+    @abstractmethod
+    def get_all_latest(self) -> List[CurrencyRate]:
+        """Retrieves the most recent CurrencyRate for each currency code."""
+        pass
+
+    @abstractmethod
+    def delete(self, rate_id: UUID) -> bool:
+        """Removes a CurrencyRate by its ID. Returns True if found and deleted."""
+        pass
+
 
 class IConfigRepository(ABC):
     """

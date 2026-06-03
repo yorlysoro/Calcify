@@ -114,6 +114,21 @@ class TransactionModel(Base):
         nullable=False
     )
 
+class CurrencyRateModel(Base):
+    """
+    ORM representation of the currency_rates database table.
+    Stores exchange rate snapshots for each currency over time.
+    """
+    __tablename__ = "currency_rates"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    currency_code: Mapped[str] = mapped_column(String(3), nullable=False, index=True)
+    rate: Mapped[Decimal] = mapped_column(Numeric(14, 6), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
 class ConfigModel(Base):
     """
     ORM representation of the system's key-value configuration store.
