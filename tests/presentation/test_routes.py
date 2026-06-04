@@ -30,7 +30,7 @@
 import pytest
 from decimal import Decimal
 from uuid import uuid4
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from flask import g
 from flask.testing import FlaskClient
 from werkzeug.security import generate_password_hash
@@ -41,6 +41,7 @@ from infrastructure.repositories.sqlalchemy_repos import (
     SqlAlchemyConfigRepository,
     SqlAlchemyProductRepository,
     SqlAlchemyCurrencyRateRepository,
+    SqlAlchemyTransactionRepository,
 )
 from infrastructure.database.models import CurrencyModel
 
@@ -156,6 +157,7 @@ def test_protected_crud_product_creation(
         "cost_price": "75.50",
         "cost_currency_code": "USD",
         "margin_percentage": "30.00",
+        "stock_quantity": 42,
     }
 
     # Act
@@ -166,6 +168,50 @@ def test_protected_crud_product_creation(
     assert response.status_code == 201
     assert response_json["message"] == "Product created successfully."
     assert response_json["data"]["id"] == new_product_id
+
+def test_update_product_success(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    Integration test for PUT /api/v1/products/<product_id>.
+    Seeds a product, updates its fields via PUT, and verifies the changes persist.
+    """
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    target_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyProductRepository(g.db_session)
+        repo.save(Product(
+            id=target_id, name="Original Name", category="Original Category",
+            cost_price=Decimal("10.00"), cost_currency_code="USD",
+            margin_percentage=Decimal("10.00"), stock_quantity=5,
+        ))
+        g.db_session.commit()
+
+    update_payload = {
+        "name": "Updated Name",
+        "category": "Updated Category",
+        "cost_price": "25.00",
+        "margin_percentage": "20.00",
+        "stock_quantity": 15,
+    }
+    response = client.put(f"/api/v1/products/{target_id}", json=update_payload)
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data["name"] == "Updated Name"
+    assert data["category"] == "Updated Category"
+    assert data["cost_price"] == "25.00"
+    assert data["margin_percentage"] == "20.00"
+    assert data["stock_quantity"] == 15
+
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyProductRepository(g.db_session)
+        updated = repo.get_by_id(target_id)
+        assert updated is not None
+        assert updated.name == "Updated Name"
+        assert updated.stock_quantity == 15
+        assert updated.category == "Updated Category"
 
 def test_export_backup_success(client: FlaskClient, seed_admin_password: None) -> None:
     """
@@ -466,3 +512,50 @@ def test_get_chronological_transactions(client: FlaskClient, seed_admin_password
     assert response.status_code == 200
     assert "data" in response.get_json()
     assert isinstance(response.get_json()["data"], list)
+
+
+def test_get_transactions_with_date_filter(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    Tests the optional ?date=YYYY-MM-DD query parameter on GET /api/v1/transactions.
+    Seeds two transactions on different dates and verifies only the matching one is returned.
+    """
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    # Arrange: Seed a product (FK dependency) and two transactions on distinct dates
+    target_product_id = uuid4()
+    today = datetime.now(timezone.utc)
+    yesterday = today - timedelta(days=1)
+    today_date_str = today.strftime("%Y-%m-%d")
+
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        prod_repo = SqlAlchemyProductRepository(g.db_session)
+        prod_repo.save(Product(
+            id=target_product_id, name="Filter Test Product",
+            cost_price=Decimal("10.00"), cost_currency_code="USD", margin_percentage=Decimal("0.00")
+        ))
+        tx_repo = SqlAlchemyTransactionRepository(g.db_session)
+        tx_repo.save(Transaction(
+            id=uuid4(), product_id=target_product_id,
+            transaction_type="IN", quantity=1, unit_price=Decimal("10.00"),
+            currency_code="USD", created_at=today,
+        ))
+        tx_repo.save(Transaction(
+            id=uuid4(), product_id=target_product_id,
+            transaction_type="OUT", quantity=2, unit_price=Decimal("20.00"),
+            currency_code="USD", created_at=yesterday,
+        ))
+        g.db_session.commit()
+
+    # Act: Request transactions filtered by today's date
+    response = client.get(f"/api/v1/transactions?date={today_date_str}")
+
+    # Assert
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert len(data) == 1
+    # Verify the returned transaction's created_at matches the requested date
+    returned_tx = data[0]
+    assert returned_tx["transaction_type"] == "IN"
+    assert returned_tx["created_at"].startswith(today_date_str)

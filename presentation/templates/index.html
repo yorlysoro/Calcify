@@ -127,6 +127,12 @@
         >
           <span>⚙️</span> Configuración
         </button>
+        <button
+          data-target="view-reports"
+          class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700"
+        >
+          <span>📊</span> Reports
+        </button>
       </nav>
     </header>
 
@@ -212,6 +218,7 @@
               <tr>
                 <th class="px-6 py-4">Product Name</th>
                 <th class="px-6 py-4">Category</th>
+                <th class="px-6 py-4">Stock</th>
                 <th class="px-6 py-4">Cost Price</th>
                 <th class="px-6 py-4">Margin</th>
                 <th class="px-6 py-4">Sale Price</th>
@@ -246,7 +253,7 @@
               ></div>
             </div>
 
-            <h3 class="text-xl font-light text-white mb-4">
+            <h3 id="modal-title" class="text-xl font-light text-white mb-4">
               Add <strong class="font-bold text-emerald-500">Product</strong>
             </h3>
             <form id="product-form" class="space-y-4">
@@ -310,6 +317,18 @@
                   id="prod-margin"
                   value="30.00"
                   required
+                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
+                  >Stock Quantity</label
+                >
+                <input
+                  type="number"
+                  id="prod-stock"
+                  value="0"
                   class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
                 />
               </div>
@@ -579,6 +598,44 @@
           </div>
         </div>
       </section>
+
+      <section id="view-reports" class="hidden w-full">
+        <div class="mb-6">
+          <h2 class="text-2xl font-light text-white">
+            Transaction <strong class="font-bold text-emerald-500">Reports</strong>
+          </h2>
+          <p class="text-zinc-500 text-sm">Daily ledger with multi-currency conversion.</p>
+        </div>
+        <div class="flex flex-col md:flex-row gap-4 mb-6">
+          <div class="relative">
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Filter by Date</label>
+            <input type="date" id="report-date-filter"
+              class="bg-black border border-zinc-800 rounded px-4 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+          </div>
+          <div class="flex items-end">
+            <button id="export-csv-btn"
+              class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">
+              Export CSV
+            </button>
+          </div>
+        </div>
+        <div class="hidden md:block overflow-x-auto w-full bg-black border border-zinc-800 rounded-xl">
+          <table class="w-full text-left text-sm whitespace-nowrap">
+            <thead class="bg-zinc-900 border-b border-zinc-800 text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest">
+              <tr>
+                <th class="px-4 py-4">Time</th>
+                <th class="px-4 py-4">Product Name</th>
+                <th class="px-4 py-4">Type</th>
+                <th class="px-4 py-4">Qty</th>
+                <th class="px-4 py-4">Unit Price (Original)</th>
+                <th class="px-4 py-4">Converted Values</th>
+              </tr>
+            </thead>
+            <tbody id="report-table-body" class="divide-y divide-zinc-800/50 text-zinc-300"></tbody>
+          </table>
+        </div>
+        <div id="report-cards-container" class="grid grid-cols-1 gap-4 md:hidden w-full mt-4"></div>
+      </section>
     </main>
 
     <script>
@@ -667,6 +724,7 @@
           CalculatorView.init();
           InventoryView.init();
           ConfigView.init();
+          ReportView.init();
 
           // Bind Tab Navigation
           document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -764,6 +822,8 @@
       // INVENTORY VIEW MODULE (Dual UI & Reactive)
       // ==========================================
       const InventoryView = {
+        editingId: null,
+
         init() {
           this.tbodyEl = document.getElementById("inv-table-body");
           this.cardsContainer = document.getElementById("inv-cards-container");
@@ -811,10 +871,19 @@
           // Modal Toggles
           document
             .getElementById("add-product-btn")
-            .addEventListener("click", () => modal.classList.remove("hidden"));
+            .addEventListener("click", () => {
+              this.editingId = null;
+              document.getElementById("modal-title").innerHTML =
+                'Add <strong class="font-bold text-emerald-500">Product</strong>';
+              document.getElementById("save-modal-btn").textContent = "Save";
+              form.reset();
+              updatePreview();
+              modal.classList.remove("hidden");
+            });
           document
             .getElementById("close-modal-btn")
             .addEventListener("click", () => {
+              this.editingId = null;
               modal.classList.add("hidden");
               form.reset();
               updatePreview();
@@ -826,24 +895,35 @@
             const loader = document.getElementById("modal-loading");
             loader.classList.remove("hidden"); // Disable form interaction
 
+            const stockInput = document.getElementById("prod-stock");
+
             const payload = {
-              id: crypto.randomUUID(),
               name: document.getElementById("prod-name").value,
               category:
-                document.getElementById("prod-category").value ||
-                "Uncategorized", // Requires Backend Update!
+                document.getElementById("prod-category").value.trim() ||
+                "Uncategorized",
               cost_price: costInput.value,
               cost_currency_code: currencySelect.value,
               margin_percentage: marginInput.value,
+              stock_quantity: parseInt(stockInput.value) || 0,
             };
 
             try {
-              await ApiClient.post("/api/v1/products", payload);
+              if (this.editingId) {
+                await ApiClient._request(
+                  `/api/v1/products/${this.editingId}`,
+                  { method: "PUT", body: JSON.stringify(payload) },
+                );
+              } else {
+                payload.id = crypto.randomUUID();
+                await ApiClient.post("/api/v1/products", payload);
+              }
               // Refresh Data
               const res = await ApiClient.get("/api/v1/products");
               App.state.products = res.data;
               this.render();
 
+              this.editingId = null;
               modal.classList.add("hidden");
               form.reset();
               updatePreview();
@@ -853,6 +933,32 @@
               loader.classList.add("hidden");
             }
           });
+        },
+
+        editProduct(id) {
+          const product = App.state.products.find((p) => p.id === id);
+          if (!product) return;
+
+          this.editingId = id;
+          document.getElementById("modal-title").innerHTML =
+            'Edit <strong class="font-bold text-emerald-500">Product</strong>';
+          document.getElementById("save-modal-btn").textContent = "Update";
+          document.getElementById("prod-name").value = product.name;
+          document.getElementById("prod-category").value = product.category || "";
+          document.getElementById("prod-cost").value = product.cost_price;
+          document.getElementById("prod-currency").value = product.cost_currency_code;
+          document.getElementById("prod-margin").value = product.margin_percentage;
+          document.getElementById("prod-stock").value = product.stock_quantity ?? 0;
+
+          const previewEl = document.getElementById("live-price-preview");
+          const cost = parseFloat(product.cost_price) || 0;
+          const margin = parseFloat(product.margin_percentage) || 0;
+          previewEl.textContent = CalculatorView.formatMoney(
+            cost * (1 + margin / 100),
+            product.cost_currency_code,
+          );
+
+          document.getElementById("product-modal").classList.remove("hidden");
         },
 
         async deleteProduct(id) {
@@ -876,7 +982,7 @@
           );
 
           if (filtered.length === 0) {
-            this.tbodyEl.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-zinc-500">No products found.</td></tr>`;
+            this.tbodyEl.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-zinc-500">No products found.</td></tr>`;
             this.cardsContainer.innerHTML = `<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">No products found.</div>`;
             return;
           }
@@ -899,10 +1005,12 @@
                 <tr class="hover:bg-zinc-900/50 transition-colors group">
                     <td class="px-6 py-4 font-medium text-white">${p.name}</td>
                     <td class="px-6 py-4 text-zinc-500 text-xs">${p.category || "-"}</td>
+                    <td class="px-6 py-4 font-mono text-zinc-400">${p.stock_quantity ?? 0}</td>
                     <td class="px-6 py-4 font-mono text-zinc-400">${formattedCost}</td>
                     <td class="px-6 py-4 font-mono text-emerald-500">+${p.margin_percentage}%</td>
                     <td class="px-6 py-4 font-mono text-white font-bold">${formattedSale}</td>
                     <td class="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="InventoryView.editProduct('${p.id}')" class="text-emerald-500 hover:text-emerald-400 font-bold text-xs uppercase tracking-wider mr-3">Edit</button>
                         <button onclick="InventoryView.deleteProduct('${p.id}')" class="text-red-500 hover:text-red-400 font-bold text-xs uppercase tracking-wider">Delete</button>
                     </td>
                 </tr>
@@ -922,11 +1030,12 @@
                         </div>
                     </div>
                     <div class="flex justify-between items-center bg-black rounded p-2 border border-zinc-800/50">
+                        <span class="text-xs text-zinc-400 font-mono">Stock: ${p.stock_quantity ?? 0}</span>
                         <span class="text-xs text-zinc-400 font-mono">Cost: ${formattedCost}</span>
                         <span class="text-xs text-emerald-500 font-mono">+${p.margin_percentage}%</span>
                     </div>
                     <div class="grid grid-cols-2 gap-2 mt-2">
-                        <button class="bg-zinc-800 text-zinc-300 py-2 rounded text-xs font-bold uppercase tracking-wider">Edit</button>
+                        <button onclick="InventoryView.editProduct('${p.id}')" class="bg-zinc-800 text-zinc-300 py-2 rounded text-xs font-bold uppercase tracking-wider">Edit</button>
                         <button onclick="InventoryView.deleteProduct('${p.id}')" class="bg-red-900/20 text-red-500 border border-red-900/30 py-2 rounded text-xs font-bold uppercase tracking-wider">Delete</button>
                     </div>
                 </div>
@@ -1104,6 +1213,147 @@
           } catch (error) {
             alert(`Error deleting rate: ${error.message}`);
           }
+        },
+      };
+
+      // ==========================================
+      // 6. REPORT VIEW MODULE (Filter & Export)
+      // ==========================================
+      const ReportView = {
+        transactions: [],
+
+        init() {
+          this.dateInput = document.getElementById("report-date-filter");
+          this.exportBtn = document.getElementById("export-csv-btn");
+          this.tbody = document.getElementById("report-table-body");
+
+          this.dateInput.value = new Date().toISOString().split("T")[0];
+
+          this.dateInput.addEventListener("change", () => this.fetchAndRender());
+          this.exportBtn.addEventListener("click", () => this.exportCSV());
+
+          this.fetchAndRender();
+        },
+
+        getRate(code) {
+          const r = App.state.rates.find(x => x.currency_code === code);
+          return r ? parseFloat(r.rate) : 1.0;
+        },
+
+        async fetchAndRender() {
+          const date = this.dateInput.value;
+          if (!date) return;
+
+          try {
+            const res = await ApiClient.get(`/api/v1/transactions?date=${date}`);
+            this.transactions = res.data;
+            this.render();
+          } catch (error) {
+            console.error("Failed to fetch transactions:", error.message);
+            this.tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-zinc-500">Failed to load transactions.</td></tr>`;
+            document.getElementById("report-cards-container").innerHTML = `<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">Failed to load transactions.</div>`;
+          }
+        },
+
+        render() {
+          const cardsContainer = document.getElementById("report-cards-container");
+          this.tbody.innerHTML = "";
+          cardsContainer.innerHTML = "";
+
+          if (this.transactions.length === 0) {
+            this.tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-zinc-500">No transactions for this date.</td></tr>`;
+            cardsContainer.innerHTML = `<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">No transactions for this date.</div>`;
+            return;
+          }
+
+          this.transactions.forEach(tx => {
+            const product = App.state.products.find(p => p.id === tx.product_id);
+            const productName = product ? product.name : tx.product_id;
+            const time = new Date(tx.created_at).toLocaleTimeString();
+
+            const sourceRate = this.getRate(tx.currency_code);
+
+            let convertedCol = "";
+            let convertedCards = "";
+            App.state.currencies.forEach(cur => {
+              if (cur.code === tx.currency_code) return;
+              const targetRate = this.getRate(cur.code);
+              const converted = (parseFloat(tx.unit_price) / sourceRate) * targetRate;
+              const formatted = converted.toFixed(2);
+              convertedCol += `<span class="block text-xs font-mono">${cur.code}: ${formatted}</span>`;
+              convertedCards += `<span class="text-xs font-mono">${cur.code}: ${formatted}</span>`;
+            });
+
+            this.tbody.innerHTML += `
+                <tr class="hover:bg-zinc-900/50 transition-colors">
+                  <td class="px-4 py-3 font-mono text-xs text-zinc-400">${time}</td>
+                  <td class="px-4 py-3 text-white">${productName}</td>
+                  <td class="px-4 py-3"><span class="${tx.transaction_type === 'IN' ? 'text-emerald-500' : 'text-red-500'} font-bold">${tx.transaction_type}</span></td>
+                  <td class="px-4 py-3 font-mono">${tx.quantity}</td>
+                  <td class="px-4 py-3 font-mono">${CalculatorView.formatMoney(parseFloat(tx.unit_price), tx.currency_code)}</td>
+                  <td class="px-4 py-3 text-xs">${convertedCol}</td>
+                </tr>
+              `;
+
+            const typeBadge = tx.transaction_type === 'IN'
+              ? '<span class="text-emerald-500 font-bold">IN</span>'
+              : '<span class="text-red-500 font-bold">OUT</span>';
+
+            cardsContainer.innerHTML += `
+                <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 flex flex-col gap-2">
+                  <div class="flex justify-between items-start">
+                    <h4 class="font-bold text-white">${productName}</h4>
+                    <span class="font-mono text-xs text-zinc-400">${time}</span>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2 text-sm text-zinc-400">
+                    <div><span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">Type</span><br/>${typeBadge}</div>
+                    <div><span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">Qty</span><br/><span class="font-mono">${tx.quantity}</span></div>
+                    <div><span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">Unit Price</span><br/><span class="font-mono">${CalculatorView.formatMoney(parseFloat(tx.unit_price), tx.currency_code)}</span></div>
+                    <div><span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">Converted</span><br/>${convertedCards}</div>
+                  </div>
+                </div>
+              `;
+          });
+        },
+
+        exportCSV() {
+          const date = this.dateInput.value;
+          if (this.transactions.length === 0) {
+            alert("No data to export.");
+            return;
+          }
+
+          const currencyCodes = App.state.currencies.map(c => c.code);
+          const headers = ["Time", "Product Name", "Type", "Qty", "Unit Price", ...currencyCodes];
+
+          const rows = this.transactions.map(tx => {
+            const product = App.state.products.find(p => p.id === tx.product_id);
+            const productName = product ? product.name : tx.product_id;
+            const time = new Date(tx.created_at).toLocaleTimeString();
+            const sourceRate = this.getRate(tx.currency_code);
+
+            const converted = currencyCodes.map(code => {
+              const targetRate = this.getRate(code);
+              return ((parseFloat(tx.unit_price) / sourceRate) * targetRate).toFixed(2);
+            });
+
+            return [time, productName, tx.transaction_type, tx.quantity, tx.unit_price, ...converted];
+          });
+
+          const csvString = [
+            headers.join(","),
+            ...rows.map(row => row.map(cell => `"${cell}"`).join(",")),
+          ].join("\n");
+
+          const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `report-${date}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
         },
       };
 

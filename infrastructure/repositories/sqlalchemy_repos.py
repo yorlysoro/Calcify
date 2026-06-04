@@ -122,7 +122,8 @@ class SqlAlchemyProductRepository(IProductRepository):
             cost_price=model.cost_price,
             cost_currency_code=model.cost_currency_code,
             margin_percentage=model.margin_percentage,
-            category=model.category
+            category=model.category,
+            stock_quantity=model.stock_quantity,
         )
 
     def save(self, product: Product) -> None:
@@ -140,6 +141,7 @@ class SqlAlchemyProductRepository(IProductRepository):
             existing_model.cost_currency_code = product.cost_currency_code
             existing_model.margin_percentage = product.margin_percentage
             existing_model.category = product.category
+            existing_model.stock_quantity = product.stock_quantity
         else:
             # Create a new ORM instance mapped from the domain entity
             new_model = ProductModel(
@@ -148,7 +150,8 @@ class SqlAlchemyProductRepository(IProductRepository):
                 cost_price=product.cost_price,
                 cost_currency_code=product.cost_currency_code,
                 margin_percentage=product.margin_percentage,
-                category=product.category
+                category=product.category,
+                stock_quantity=product.stock_quantity,
             )
             self._session.add(new_model)
             
@@ -159,7 +162,9 @@ class SqlAlchemyProductRepository(IProductRepository):
         return [
             Product(
                 id=m.id, name=m.name, cost_price=m.cost_price,
-                cost_currency_code=m.cost_currency_code, margin_percentage=m.margin_percentage
+                cost_currency_code=m.cost_currency_code, margin_percentage=m.margin_percentage,
+                category=m.category or "Uncategorized",
+                stock_quantity=m.stock_quantity or 0,
             ) for m in models
         ]
     

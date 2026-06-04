@@ -28,7 +28,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
-import os
 from typing import Optional
 from flask import Flask, g
 from sqlalchemy import create_engine, Engine
@@ -39,6 +38,7 @@ from sqlalchemy.pool import StaticPool
 from infrastructure.database.models import Base, ConfigModel
 from infrastructure.database.session import get_db_path
 from infrastructure.database.migrations import run_migrations
+from infrastructure.database.auto_migrate import bootstrap_migrations
 from infrastructure.repositories.sqlalchemy_repos import SqlAlchemyConfigRepository
 
 # Security Import
@@ -106,23 +106,14 @@ def create_app(config_name: Optional[str] = None) -> Flask:
             # Idempotent Security Bootstrap (Prevents locking out active sessions)
             initialize_security("Calcify")
 
-            # Programmatic Migrations (graceful fallback if alembic.ini is absent)
-            alembic_ini_path: str = os.path.join(
-                os.path.dirname(__file__), "alembic.ini"
-            )
-            if os.path.exists(alembic_ini_path):
-                try:
-                    run_migrations("Calcify")
-                except Exception as e:
-                    logger.critical(
-                        f"Application boot aborted. Migration failed: {str(e)}"
-                    )
-                    raise SystemExit(1)
-            else:
-                logger.warning(
-                    "alembic.ini not found, falling back to raw SQLAlchemy initialization"
+            # Auto-migrations: bootstraps Alembic, generates, and applies schema updates
+            try:
+                bootstrap_migrations(str(engine.url), Base.metadata)
+            except Exception as e:
+                logger.critical(
+                    f"Application boot aborted. Migration failed: {str(e)}"
                 )
-                Base.metadata.create_all(bind=engine)
+                raise SystemExit(1)
 
         # Dynamically inject the cryptographic App Secret Key into Flask
         with SessionLocal() as temp_session:

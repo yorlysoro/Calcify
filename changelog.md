@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-03
+
+### Added
+
+- **Domain:** `stock_quantity: int = 0` field in `Product` entity for inventory tracking (`domain/models.py`).
+- **Infrastructure:** `stock_quantity` column in `ProductModel` ORM with `server_default="0"` (`infrastructure/database/models.py`).
+- **Infrastructure:** Automatic Alembic migration bootstrap (`infrastructure/database/auto_migrate.py`) — creates `alembic.ini` and `migrations/` on demand, patches `env.py` with `target_metadata`, `render_as_batch=True`, `compare_type=True`, `compare_server_default=True`, and auto-generates/applies schema migrations on every `app.py` startup. Falls back to raw `ALTER TABLE` DDL when Alembic's autogenerate fails to detect SQLite column changes.
+- **Infrastructure:** Defensive mapping for legacy rows in `SqlAlchemyProductRepository.get_all` — `stock_quantity` falls back to `0` and `category` to `"Uncategorized"` when the database returns `None` (`infrastructure/repositories/sqlalchemy_repos.py`).
+- **API:** `PUT /api/v1/products/<product_id>` endpoint for partial product updates (name, category, cost_price, cost_currency_code, margin_percentage, stock_quantity) with field-level validation and rollback on failure (`presentation/api/routes.py`).
+- **API:** `stock_quantity` serialization in `GET /api/v1/products` and `GET /api/v1/products/<id>` responses (`presentation/api/routes.py`).
+- **API:** Server-side date filtering via `?date=YYYY-MM-DD` query parameter on `GET /api/v1/transactions` (`presentation/api/routes.py`).
+- **API:** Full exception debugging in `GET /api/v1/products` — stack trace printed to Flask terminal via `traceback.print_exc()` and error details (`error`, `type`, `trace`) exposed in the JSON 500 response for browser Network tab inspection.
+- **Frontend:** Stock Quantity input field in Add/Edit Product modal and Stock column in inventory table (`presentation/templates/index.html`).
+- **Frontend:** Reports tab (📊) with daily transaction ledger, multi-currency conversion display, date filter input, and CSV export (`presentation/templates/index.html`).
+- **Testing:** `test_auto_migrate.py` — 4 integration tests covering Alembic schema sync: initial table creation, column addition, column removal, and column type replacement with SQLite batch mode (`tests/infrastructure/test_auto_migrate.py`).
+- **Testing:** `test_update_product_success` — integration test for `PUT /api/v1/products/<id>` verifying field updates persist and return correctly (`tests/presentation/test_routes.py`).
+- **Testing:** `test_get_transactions_with_date_filter` — integration test for `?date=` query parameter on transaction listing (`tests/presentation/test_routes.py`).
+
+### Changed
+
+- **Core:** Application boot now calls `bootstrap_migrations(str(engine.url), Base.metadata)` instead of manually checking `alembic.ini` existence or falling back to `Base.metadata.create_all`. Migrations are fully automatic on every startup (`app.py`).
+
+### Fixed
+
+- **Migrations:** Removed `KeyError: 'formatters'` crash by delegating alembic.ini creation to Alembic's native `command.init()` instead of a manually written stripped-down INI string.
+- **Migrations:** Alembic revisions are no longer auto-generated on boot (was causing hangs); the boot flow uses `command.upgrade("head")` only, and column detection falls back to raw DDL via SQLAlchemy `inspect()`.
+- **Repositories:** `SqlAlchemyProductRepository.get_all` now safely handles `None` values from legacy rows for `stock_quantity` and `category` columns.
+
 ## [0.6.0] - 2026-06-02
 
 ### Added

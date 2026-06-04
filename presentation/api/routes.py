@@ -27,6 +27,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import traceback
 from presentation.api.auth import login_required
 import logging
 from typing import Optional, Tuple, Dict, Any, List
@@ -163,6 +164,7 @@ def create_product() -> Tuple[Response, int]:
         cost_currency_code = str(payload["cost_currency_code"])
         margin_percentage = Decimal(str(payload["margin_percentage"]))
         category = str(payload.get("category", "Uncategorized"))
+        stock_quantity = int(payload.get("stock_quantity", 0))
 
         # 2. Instantiate Pure Domain Entity
         new_product = Product(
@@ -171,7 +173,8 @@ def create_product() -> Tuple[Response, int]:
             cost_price=cost_price,
             cost_currency_code=cost_currency_code,
             margin_percentage=margin_percentage,
-            category=category
+            category=category,
+            stock_quantity=stock_quantity,
         )
 
         # 3. Persistence (Unit of Work)
@@ -244,6 +247,7 @@ def get_product(product_id: str) -> Tuple[Response, int]:
                             calculated_sale_price
                         ),  # Serialized to string to prevent float precision loss in JSON
                         "category": product.category,
+                        "stock_quantity": product.stock_quantity,
                     }
                 }
             ),
@@ -257,6 +261,64 @@ def get_product(product_id: str) -> Tuple[Response, int]:
         )
     except Exception as e:
         logger.error(f"Failed to fetch product {product_id}: {str(e)}")
+        return jsonify({"error": "Internal server error."}), 500
+
+@api_bp.route("/products/<product_id>", methods=["PUT"])
+@login_required
+def update_product(product_id: str) -> Tuple[Response, int]:
+    """
+    Updates an existing product's fields.
+    Expects a JSON payload with any subset of updatable fields.
+    Protected endpoint: Requires active session.
+    """
+    repo = SqlAlchemyProductRepository(session=g.db_session)
+
+    try:
+        parsed_id = UUID(product_id)
+        product: Optional[Product] = repo.get_by_id(parsed_id)
+        if not product:
+            return jsonify({"error": f"Product with ID {product_id} not found."}), 404
+
+        payload: Optional[Dict[str, Any]] = request.get_json()
+        if not payload:
+            return jsonify({"error": "Invalid or missing JSON payload."}), 400
+
+        if "name" in payload:
+            product.name = str(payload["name"])
+        if "category" in payload:
+            product.category = str(payload.get("category", "Uncategorized"))
+        if "cost_price" in payload:
+            product.cost_price = Decimal(str(payload["cost_price"]))
+        if "cost_currency_code" in payload:
+            product.cost_currency_code = str(payload["cost_currency_code"])
+        if "margin_percentage" in payload:
+            product.margin_percentage = Decimal(str(payload["margin_percentage"]))
+        if "stock_quantity" in payload:
+            product.stock_quantity = int(payload["stock_quantity"])
+
+        repo.save(product)
+        g.db_session.commit()
+
+        return jsonify({
+            "message": "Product updated successfully.",
+            "data": {
+                "id": str(product.id),
+                "name": product.name,
+                "category": product.category,
+                "cost_price": str(product.cost_price),
+                "cost_currency_code": product.cost_currency_code,
+                "margin_percentage": str(product.margin_percentage),
+                "stock_quantity": product.stock_quantity,
+            },
+        }), 200
+
+    except ValueError:
+        return jsonify({"error": "Invalid product ID format. Must be a valid UUID."}), 400
+    except InvalidOperation:
+        return jsonify({"error": "Financial values must be valid decimal numbers."}), 400
+    except Exception as e:
+        g.db_session.rollback()
+        logger.error(f"Failed to update product {product_id}: {str(e)}")
         return jsonify({"error": "Internal server error."}), 500
 
 @api_bp.route("/products", methods=["GET"])
@@ -284,6 +346,7 @@ def get_products() -> Tuple[Response, int]:
                 "cost_currency_code": p.cost_currency_code,
                 "margin_percentage": str(p.margin_percentage),
                 "category": p.category,
+                "stock_quantity": p.stock_quantity,
             }
             for p in products
         ]
@@ -291,8 +354,9 @@ def get_products() -> Tuple[Response, int]:
         return jsonify({"data": response_data}), 200
         
     except Exception as e:
+        traceback.print_exc()
         logger.error(f"Failed to fetch inventory products: {str(e)}")
-        return jsonify({"error": "Internal server error while fetching inventory."}), 500
+        return jsonify({"error": str(e), "type": str(type(e)), "trace": traceback.format_exc()}), 500
 
 @api_bp.route("/transactions", methods=["POST"])
 @login_required
@@ -363,12 +427,24 @@ def create_transaction() -> Tuple[Response, int]:
 def get_transactions() -> Tuple[Response, int]:
     """
     Retrieves the chronological ledger history of all transactions.
+    Supports optional ?date=YYYY-MM-DD query parameter for server-side filtering.
     Protected endpoint: Requires active session.
     """
     repo = SqlAlchemyTransactionRepository(session=g.db_session)
     
     try:
+        date_str: Optional[str] = request.args.get("date")
         transactions: List[Transaction] = repo.get_all()
+        
+        if date_str:
+            try:
+                parsed_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                transactions = [
+                    tx for tx in transactions
+                    if tx.created_at.date() == parsed_date
+                ]
+            except ValueError:
+                return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
         
         # O(N) Serialization block
         response_data: List[Dict[str, Any]] = [

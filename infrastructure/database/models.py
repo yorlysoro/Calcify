@@ -75,6 +75,7 @@ class ProductModel(Base):
     
     # Percentage margin strictly defined as Decimal
     margin_percentage: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    stock_quantity: Mapped[int] = mapped_column(Integer, server_default="0", nullable=False)
     category: Mapped[str] = mapped_column(String(100), server_default="Uncategorized", nullable=False)
 
 
