@@ -64,3 +64,32 @@ Enforced rules (also in `.agents/rules/`):
 - `Decimal` values serialized to strings in all JSON responses (JS float corruption prevention).
 - Route handlers instantiate repos directly from `g.db_session`: `SqlAlchemyProductRepository(session=g.db_session)`.
 - Changelog: `changelog.md`.
+
+## Design & Architecture Patterns
+
+| # | Pattern | Category | Key File(s) |
+|---|---------|----------|-------------|
+| 1 | Clean Architecture (4-layer strict) | Architectural | All packages — domain/ → use_cases/ → infrastructure/ → presentation/ |
+| 2 | Dependency Inversion (DIP) | Architectural | `interfaces.py`, `sqlalchemy_repos.py`, `export_backup.py` |
+| 3 | Application Factory | Creational | `app.py` — `create_app(config_name=None)` |
+| 4 | Repository | Structural | `interfaces.py` (abstract), `sqlalchemy_repos.py` (concrete) |
+| 5 | Dependency Injection | Structural | `app.py` (g.db_session), repos (Session ctor), use cases (repo ctor) |
+| 6 | Unit of Work | Behavioral | `app.py` (before_request/teardown), repos never commit, routes call `g.db_session.commit()` |
+| 7 | Decorator (Auth Middleware) | Structural | `presentation/api/auth.py` — `@login_required` |
+| 8 | Adapter (ORM → Domain) | Structural | `sqlalchemy_repos.py` — `_map_to_domain()` |
+| 9 | Strategy (Migration) | Behavioral | `auto_migrate.py` (bootstrap) vs `migrations.py` (CLI) |
+| 10 | Use Case / Interactor | Behavioral | `use_cases/export_backup.py` — single-purpose `execute()` |
+| 11 | Domain Service (Stateless) | Behavioral | `domain/services.py` — `CurrencyConverter.convert()` |
+| 12 | SAVEPOINT Test Isolation | Testing | `tests/conftest.py` — nested txns for zero pollution |
+| 13 | Session-scoped Fixture (Singleton) | Testing | `tests/conftest.py` — `db_engine` with `scope="session"` |
+| 14 | AAA (Arrange-Act-Assert) | TDD | All test files — `# Arrange` / `# Act` / `# Assert` |
+| 15 | Red-Green-Refactor | TDD | Test comments + `.agents/rules/backend-python-dev.md` |
+| 16 | Upsert (Merge) | Infrastructure | `sqlalchemy_repos.py` — `session.merge()` for currencies/rates/config |
+| 17 | Lookup-Then-Update | Infrastructure | `sqlalchemy_repos.py` — explicit query+update for products/transactions |
+| 18 | Subquery Aggregation | Infrastructure | `sqlalchemy_repos.py:221-247` — `func.max` per currency_code |
+| 19 | Programmatic Alembic | Infrastructure | `auto_migrate.py` — `alembic.command` bypasses CLI |
+| 20 | OS-Aware DB Path | Infrastructure | `session.py` — `get_db_path()` for Win/Mac/Linux |
+| 21 | Idempotent Bootstrap | Operational | `setup_security.py` — skip if secret/pw exists |
+| 22 | Password Hashing (Werkzeug) | Security | `auth.py` / `setup_security.py` — `generate_password_hash` / `check_password_hash` |
+| 23 | Session Fixation Prevention | Security | `auth.py:104` — `session.clear()` before login |
+| 24 | Anti-Corruption Layer | Clean Code | `domain/models.py` — `__post_init__` validates types |
