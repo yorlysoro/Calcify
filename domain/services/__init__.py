@@ -27,17 +27,15 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import annotations
+
 from decimal import Decimal, ROUND_HALF_UP
-from domain.models import Currency, ExchangeRate
+from typing import TYPE_CHECKING
 
+from domain.exceptions import InvalidExchangeRateError
 
-class InvalidExchangeRateError(ValueError):
-    """
-    Domain-specific exception raised when an exchange rate is mathematically
-    or logically invalid for processing (e.g., a rate of 0.00).
-    """
-
-    pass
+if TYPE_CHECKING:
+    from domain.models import Currency, ExchangeRate
 
 
 class CurrencyConverter:
@@ -98,3 +96,26 @@ class CurrencyConverter:
         # 4. Financial Rounding: Strictly enforce 2 decimal points using banking standard
         # The string "0.01" serves as the quantization pattern for two decimal places.
         return raw_result.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @staticmethod
+    def convert_with_rates(
+        amount: float,
+        source_rate: float,
+        target_rate: float,
+    ) -> float:
+        """
+        Converts an amount using source and target exchange rates relative to the base currency.
+
+        Formula: (amount / source_rate) * target_rate
+
+        Args:
+            amount (float): The monetary value to convert.
+            source_rate (float): Exchange rate of the source currency (1.0 if it is the base).
+            target_rate (float): Exchange rate of the target currency (1.0 if it is the base).
+
+        Returns:
+            float: The converted amount rounded to 4 decimal places.
+        """
+        if source_rate == 0.0 or target_rate == 0.0:
+            raise InvalidExchangeRateError("Exchange rate cannot be zero.")
+        return round((amount / source_rate) * target_rate, 4)

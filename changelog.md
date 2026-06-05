@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Domain:** `domain/exceptions.py` extracted as centralized exception module for domain layer, decoupling exceptions from services and preventing circular import chains.
+- **Domain:** `inverse_rate: Decimal` field in `CurrencyRate` entity — pre-calculated reciprocal of `rate` stored with `Numeric(24, 12)` precision for inverse-based conversion math (`domain/models.py`).
+- **Domain:** `CurrencyConverter.convert(amount, source_inverse, target_inverse)` static method in `domain/services/currency_converter.py` implementing inverse-rate formula `(amount * src_inv) / tgt_inv` with 4-decimal `ROUND_HALF_UP` quantization.
+- **Infrastructure:** `inverse_rate` column in `CurrencyRateModel` ORM with `Numeric(24, 12)` and `server_default="0"` (`infrastructure/database/models.py`).
+- **Infrastructure:** Offline DDL SQL trace generation — `bootstrap_migrations` writes `schema_trace.sql` via Alembic's `--sql` flag for manual review and debugging (`infrastructure/database/auto_migrate.py`).
+- **Infrastructure:** `ICurrencyRepository.set_main(code)` abstract method and `SqlAlchemyCurrencyRepository.set_main` implementation — batch-updates all currencies to `is_main=False`, then sets the target currency to `True` (`infrastructure/repositories/interfaces.py`, `infrastructure/repositories/sqlalchemy_repos.py`).
+- **API:** `PUT /api/v1/currencies/<code>/set_main` endpoint designating a currency as the main/base currency with 404 on missing currency (`presentation/api/routes.py`).
+- **API:** `inverse_rate` serialized in `POST /api/v1/rates` and `GET /api/v1/rates/latest` responses (`presentation/api/routes.py`).
+- **API:** Global `@api_bp.errorhandler(Exception)` catching all unhandled API exceptions with stack trace logging and generic 500 response (`presentation/api/routes.py`).
+- **Frontend:** "Set Base" button on non-main currency cards in Config view, allowing users to designate a base currency interactively (`presentation/templates/index.html`).
+- **Frontend:** Calculator and Reports views now use `inverse_rate`-based cross-rate formula (`truncate((amount * sourceInverse) / targetInverse)`) for accurate multi-currency conversion (`presentation/templates/index.html`).
+- **Frontend:** Warning placeholder (`#calc-warning`) and base-currency guard message when no base currency is set in the calculator (`presentation/templates/index.html`).
+- **Testing:** `tests/domain/test_currency_converter.py` — 6 unit tests for inverse-rate-based `CurrencyConverter.convert`: precision, identity, base→target, target→base, cross-currency, and zero-inverse error cases.
+- **Testing:** `test_set_main_currency` and `test_set_main_currency_not_found` — integration tests for `PUT /api/v1/currencies/<code>/set_main` (`tests/presentation/test_routes.py`).
+- **Testing:** `test_calculator_precision` — verifies that `GET /api/v1/rates/latest` returns full Decimal precision (e.g. `"3.333333"` not `"3.3333330"`) (`tests/presentation/test_routes.py`).
+- **Testing:** `test_5_currency_rates_add_inverse_rate` — Alembic migration test for adding the `inverse_rate` column with `server_default` (`tests/infrastructure/test_auto_migrate.py`).
+
+### Changed
+
+- **Refactor:** `domain/services.py` converted to `domain/services/` package — `__init__.py` preserves the original `CurrencyConverter.convert` (using `ExchangeRate` objects) and new `currency_converter.py` module exposes the simplified static `convert` method.
+- **Refactor:** `InvalidExchangeRateError` moved from `domain/services.py` to `domain/exceptions.py`; import updated in `tests/test_currency_converter.py`.
+- **Refactor:** `SqlAlchemyCurrencyRateRepository.save` and domain mapping now persist/map `inverse_rate` alongside `rate` (`infrastructure/repositories/sqlalchemy_repos.py`).
+- **API:** `GET /api/v1/products` error handler suppressed verbose debug trace from JSON 500 responses (now returns a generic message) (`presentation/api/routes.py`).
+- **API:** `GET /api/v1/rates/latest` error handler re-enabled stack trace printing for debugging (`presentation/api/routes.py`).
+
+### Fixed
+
+- **Core:** Global `@app.errorhandler(Exception)` catches all unhandled exceptions system-wide with proper logging and JSON error response, falling through to Werkzeug for HTTP exceptions (`app.py`).
+- **Logging:** Log format changed from `"%(levelname)s: %(message)s"` to `"%(asctime)s [%(levelname)s] %(module)s: %(message)s"` for better traceability (`app.py`).
+
 ## [0.7.0] - 2026-06-03
 
 ### Added

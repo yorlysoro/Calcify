@@ -58,6 +58,14 @@ logger: logging.Logger = logging.getLogger(__name__)
 api_bp: Blueprint = Blueprint("api", __name__, url_prefix="/api/v1")
 
 
+@api_bp.errorhandler(Exception)
+def handle_unhandled_error(error: Exception) -> Tuple[Response, int]:
+    """Global exception handler for all unhandled API errors."""
+    traceback.print_exc()
+    logger.error("Unhandled exception:\n%s", traceback.format_exc())
+    return jsonify({"error": "Internal Server Error", "message": str(error)}), 500
+
+
 @api_bp.route("/currencies", methods=["GET"])
 @login_required
 def get_currencies() -> Tuple[Response, int]:
@@ -353,10 +361,9 @@ def get_products() -> Tuple[Response, int]:
         
         return jsonify({"data": response_data}), 200
         
-    except Exception as e:
-        traceback.print_exc()
-        logger.error(f"Failed to fetch inventory products: {str(e)}")
-        return jsonify({"error": str(e), "type": str(type(e)), "trace": traceback.format_exc()}), 500
+    except Exception:
+        logger.error("Failed to fetch inventory products.")
+        return jsonify({"error": "Internal server error while fetching products."}), 500
 
 @api_bp.route("/transactions", methods=["POST"])
 @login_required
@@ -482,11 +489,13 @@ def create_currency_rate() -> Tuple[Response, int]:
     try:
         currency_code: str = str(payload["currency_code"]).upper()
         rate: Decimal = Decimal(str(payload["rate"]))
+        inverse_rate: Decimal = Decimal("1.0") / rate
 
         new_rate: CurrencyRate = CurrencyRate(
             id=uuid4(),
             currency_code=currency_code,
             rate=rate,
+            inverse_rate=inverse_rate,
             created_at=datetime.now(timezone.utc),
         )
 
@@ -500,6 +509,7 @@ def create_currency_rate() -> Tuple[Response, int]:
                     "id": str(new_rate.id),
                     "currency_code": new_rate.currency_code,
                     "rate": str(new_rate.rate),
+                    "inverse_rate": str(new_rate.inverse_rate),
                     "created_at": new_rate.created_at.isoformat(),
                 },
             }),
@@ -531,6 +541,7 @@ def get_latest_currency_rates() -> Tuple[Response, int]:
                 "id": str(r.id),
                 "currency_code": r.currency_code,
                 "rate": str(r.rate),
+                "inverse_rate": str(r.inverse_rate),
                 "created_at": r.created_at.isoformat(),
             }
             for r in rates
@@ -538,8 +549,9 @@ def get_latest_currency_rates() -> Tuple[Response, int]:
         return jsonify({"data": response_data}), 200
 
     except Exception as e:
+        traceback.print_exc()
         logger.error(f"Failed to fetch latest rates: {str(e)}")
-        return jsonify({"error": "Internal server error while fetching rates."}), 500
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
 
 @api_bp.route("/rates/<rate_id>", methods=["DELETE"])
@@ -608,6 +620,29 @@ def export_backup() -> Response:
     except Exception as e:
         logger.error(f"Failed to export system backup: {str(e)}")
         return jsonify({"error": "Failed to generate system backup."}), 500
+
+@api_bp.route("/currencies/<string:code>/set_main", methods=["PUT"])
+@login_required
+def set_main_currency(code: str) -> Tuple[Response, int]:
+    """Sets a currency as the main/base currency, unsetting all others."""
+    repo = SqlAlchemyCurrencyRepository(session=g.db_session)
+
+    try:
+        code_upper: str = code.upper()
+        existing: Optional[Currency] = repo.get_by_code(code_upper)
+        if not existing:
+            return jsonify({"error": f"Currency {code_upper} not found."}), 404
+
+        repo.set_main(code_upper)
+        g.db_session.commit()
+
+        return jsonify({"message": f"{code_upper} set as main currency."}), 200
+
+    except Exception as e:
+        g.db_session.rollback()
+        logger.error(f"Failed to set main currency {code}: {str(e)}")
+        return jsonify({"error": "Internal server error."}), 500
+
 
 @api_bp.route("/products/<product_id>", methods=["DELETE"])
 @login_required

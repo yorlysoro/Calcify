@@ -53,6 +53,11 @@ class ICurrencyRepository(ABC):
         """Retrieves all available Currency domain entities."""
         pass
 
+    @abstractmethod
+    def set_main(self, code: str) -> None:
+        """Sets a currency as the main/base, unsetting all others."""
+        pass
+
 
 class IProductRepository(ABC):
     """

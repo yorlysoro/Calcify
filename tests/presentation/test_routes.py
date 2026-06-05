@@ -435,6 +435,68 @@ def test_create_currency_success(client: FlaskClient, seed_admin_password: None)
     assert data["is_main"] is False
 
 
+def test_set_main_currency(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    Tests PUT /api/v1/currencies/<code>/set_main.
+    Seeds two currencies, sets one as main, verifies only one is main in DB.
+    """
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        g.db_session.merge(CurrencyModel(code="EUR", name="Euro", symbol="\u20ac", is_main=False))
+        g.db_session.merge(CurrencyModel(code="GBP", name="British Pound", symbol="\u00a3", is_main=False))
+        g.db_session.commit()
+
+    response = client.put("/api/v1/currencies/EUR/set_main")
+    assert response.status_code == 200
+    assert "EUR set as main currency." in response.get_json()["message"]
+
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        eur = g.db_session.query(CurrencyModel).filter_by(code="EUR").first()
+        gbp = g.db_session.query(CurrencyModel).filter_by(code="GBP").first()
+        assert eur.is_main is True
+        assert gbp.is_main is False
+
+
+def test_set_main_currency_not_found(client: FlaskClient, seed_admin_password: None) -> None:
+    """Tests that setting a non-existent currency returns 404."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.put("/api/v1/currencies/XYZ/set_main")
+    assert response.status_code == 404
+    assert "error" in response.get_json()
+
+
+def test_calculator_precision(client: FlaskClient, seed_admin_password: None) -> None:
+    """
+    Tests that decimal serialization of rates maintains full precision
+    without float rounding (e.g., '3.333333' returns '3.333333').
+    """
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyCurrencyRateRepository(g.db_session)
+        repo.save(CurrencyRate(
+            id=uuid4(), currency_code="EUR",
+            rate=Decimal("3.333333"),
+            created_at=datetime.now(timezone.utc),
+        ))
+        g.db_session.commit()
+
+    response = client.get("/api/v1/rates/latest")
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    eur_rates = [r for r in data if r["currency_code"] == "EUR"]
+    assert len(eur_rates) >= 1
+    assert eur_rates[0]["rate"] == "3.333333"
+
+
 def test_create_currency_duplicate(client: FlaskClient, seed_admin_password: None) -> None:
     """
     Tests that attempting to create a duplicate currency returns a graceful error.

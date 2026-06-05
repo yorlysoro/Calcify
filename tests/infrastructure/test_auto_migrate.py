@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, inspect, Column, String, Integer
+from sqlalchemy import create_engine, inspect, Column, String, Integer, Numeric
 
 from infrastructure.database.auto_migrate import bootstrap_migrations
 from infrastructure.database.models import Base
@@ -101,3 +101,41 @@ def test_4_replace_field(isolated_env: str) -> None:
     assert str(col_info["type"]) == "INTEGER"
 
     _remove_test_col()
+
+
+def test_5_currency_rates_add_inverse_rate(isolated_env: str) -> None:
+    """
+    Removes inverse_rate from metadata + DB, re-adds it with server_default,
+    and verifies Alembic auto-migration adds the column back.
+    """
+    from sqlalchemy import Table
+
+    db_url: str = isolated_env
+    metadata = Base.metadata
+    rates_table: Table = metadata.tables["currency_rates"]
+
+    inverse_col = rates_table.c["inverse_rate"]
+    rates_table._columns.remove(inverse_col)
+
+    assert bootstrap_migrations(db_url, Base.metadata)
+
+    engine = create_engine(db_url)
+    inspector = inspect(engine)
+    columns = [c["name"] for c in inspector.get_columns("currency_rates")]
+    assert "inverse_rate" not in columns
+    engine.dispose()
+
+    rates_table.append_column(
+        Column("inverse_rate", Numeric(24, 12), server_default="0", nullable=False),
+    )
+
+    assert bootstrap_migrations(db_url, Base.metadata)
+
+    engine = create_engine(db_url)
+    inspector = inspect(engine)
+    columns = [c["name"] for c in inspector.get_columns("currency_rates")]
+    assert "inverse_rate" in columns
+    engine.dispose()
+
+    rates_table._columns.remove(rates_table.c["inverse_rate"])
+    rates_table.append_column(inverse_col)

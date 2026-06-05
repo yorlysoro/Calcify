@@ -29,6 +29,7 @@
 
 from typing import Optional, List
 from uuid import UUID
+from decimal import Decimal
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import timezone
@@ -97,6 +98,15 @@ class SqlAlchemyCurrencyRepository(ICurrencyRepository):
             )
             for m in models
         ]
+
+    def set_main(self, code: str) -> None:
+        """Sets a currency as main/base, unsetting all others."""
+        self._session.query(CurrencyModel).update(
+            {CurrencyModel.is_main: False}
+        )
+        self._session.query(CurrencyModel).filter_by(code=code).update(
+            {CurrencyModel.is_main: True}
+        )
 
 
 class SqlAlchemyProductRepository(IProductRepository):
@@ -192,10 +202,12 @@ class SqlAlchemyCurrencyRateRepository(ICurrencyRateRepository):
 
     def save(self, rate: CurrencyRate) -> None:
         """Maps a domain CurrencyRate to an ORM model and persists it via merge."""
+        inverse: Decimal = Decimal("1") / rate.rate
         model: CurrencyRateModel = CurrencyRateModel(
             id=rate.id,
             currency_code=rate.currency_code,
             rate=rate.rate,
+            inverse_rate=inverse,
             created_at=rate.created_at,
         )
         self._session.merge(model)
@@ -214,6 +226,7 @@ class SqlAlchemyCurrencyRateRepository(ICurrencyRateRepository):
             id=model.id,
             currency_code=model.currency_code,
             rate=model.rate,
+            inverse_rate=model.inverse_rate,
             created_at=model.created_at,
         )
 
@@ -241,6 +254,7 @@ class SqlAlchemyCurrencyRateRepository(ICurrencyRateRepository):
                 id=m.id,
                 currency_code=m.currency_code,
                 rate=m.rate,
+                inverse_rate=m.inverse_rate,
                 created_at=m.created_at,
             )
             for m in models

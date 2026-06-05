@@ -28,8 +28,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
+import traceback
 from typing import Optional
-from flask import Flask, g
+from werkzeug.exceptions import HTTPException
+from flask import Flask, g, jsonify
 from sqlalchemy import create_engine, Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -50,7 +52,10 @@ from presentation.api.auth import auth_bp
 from presentation.web.routes import web_bp
 
 # Set up global logging config for the application
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(module)s: %(message)s",
+)
 logger: logging.Logger = logging.getLogger(__name__)
 
 
@@ -150,7 +155,16 @@ def create_app(config_name: Optional[str] = None) -> Flask:
                 db_session.rollback()
             db_session.close()
 
-    # 5. Blueprint Registration (Enforcing the Golden Rule)
+    # 5. Global Application Error Handler (Catches all unhandled exceptions)
+    @app.errorhandler(Exception)
+    def handle_global_exception(error: Exception) -> tuple:
+        """Catches any unhandled exception across the entire system."""
+        if isinstance(error, HTTPException):
+            return jsonify({"error": error.name, "message": error.description}), error.code
+        logging.error("Unhandled exception:\n%s", traceback.format_exc())
+        return jsonify({"error": "Internal Server Error", "message": str(error)}), 500
+
+    # 6. Blueprint Registration (Enforcing the Golden Rule)
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(web_bp)

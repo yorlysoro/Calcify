@@ -190,6 +190,7 @@ class CurrencyRate:
         id (UUID): The unique identifier for this rate record.
         currency_code (str): The ISO 4217 currency code this rate applies to.
         rate (Decimal): The exchange rate value relative to the main/base currency.
+        inverse_rate (Decimal): The pre-calculated reciprocal of rate (1/rate).
         created_at (datetime): A strict timezone-aware timestamp.
     """
 
@@ -197,6 +198,7 @@ class CurrencyRate:
     currency_code: str
     rate: Decimal
     created_at: datetime
+    inverse_rate: Decimal = Decimal("0.0")
 
 
 @dataclass(slots=True)

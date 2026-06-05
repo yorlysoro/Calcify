@@ -74,4 +74,14 @@ def bootstrap_migrations(db_url: str, metadata) -> bool:
     except Exception as e:
         logger.warning(f"Alembic migration skipped or failed: {e}")
 
+    # 7. Generate offline SQL trace (DDL dump) for debugging and manual review
+    sql_trace_path: Path = project_root / "schema_trace.sql"
+    try:
+        with open(str(sql_trace_path), "w") as buffer:
+            config.output_buffer = buffer
+            command.upgrade(config, "base:head", sql=True)
+        logger.info(f"Offline SQL trace written to {sql_trace_path}")
+    except Exception as e:
+        logger.warning(f"Failed to generate offline SQL trace: {e}")
+
     return True

@@ -172,6 +172,7 @@
             </div>
           </div>
           <hr class="border-zinc-800 mb-6" />
+          <div id="calc-warning" class="text-zinc-500 text-sm mb-4 hidden"></div>
           <div
             id="calc-results"
             class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
@@ -757,6 +758,7 @@
           this.inputEl = document.getElementById("calc-input");
           this.selectEl = document.getElementById("calc-base");
           this.resultsEl = document.getElementById("calc-results");
+          this.warningEl = document.getElementById("calc-warning");
 
           this.selectEl.innerHTML = "";
           App.state.currencies.forEach((cur) => {
@@ -772,6 +774,14 @@
           this.render();
         },
 
+        getBaseCurrency() {
+          return App.state.currencies.find(c => c.is_main === true);
+        },
+
+        truncate(value) {
+          return Math.round((value + Number.EPSILON) * 10000) / 10000;
+        },
+
         formatMoney(value, currency) {
           return new Intl.NumberFormat("en-US", {
             style: "currency",
@@ -779,15 +789,23 @@
           }).format(value);
         },
 
-        getRate(code) {
+        getInverseRate(code) {
+          const base = this.getBaseCurrency();
+          if (base && code === base.code) return 1.0;
           const r = App.state.rates.find(x => x.currency_code === code);
-          return r ? parseFloat(r.rate) : 1.0;
+          return r ? parseFloat(r.inverse_rate) : 1.0;
         },
 
         render() {
+          const base = this.getBaseCurrency();
+          if (!base) {
+            this.resultsEl.innerHTML = `<div class="col-span-full text-center py-8 text-zinc-500">⚠️ Please set a base currency in <button onclick="App.switchTab('view-config')" class="text-emerald-500 hover:underline">Settings</button> to use the calculator.</div>`;
+            return;
+          }
+
           const amount = parseFloat(this.inputEl.value) || 0;
-          const baseCur = this.selectEl.value;
-          const baseRate = this.getRate(baseCur);
+          const baseCur = this.selectEl.value || base.code;
+          const sourceInverse = this.getInverseRate(baseCur);
 
           this.resultsEl.innerHTML = "";
           if (!baseCur) return;
@@ -795,9 +813,9 @@
           App.state.currencies.forEach((cur) => {
             if (cur.code === baseCur) return;
 
-            const targetRate = this.getRate(cur.code);
-            const finalVal = (amount / baseRate) * targetRate;
-            const exchangeRate = (targetRate / baseRate).toFixed(4);
+            const targetInverse = this.getInverseRate(cur.code);
+            const finalVal = this.truncate((amount * sourceInverse) / targetInverse);
+            const exchangeRate = this.truncate(sourceInverse / targetInverse).toFixed(4);
 
             this.resultsEl.innerHTML += `
                 <div class="bg-black border border-zinc-800 rounded-xl p-5 flex flex-col justify-between shadow-lg">
@@ -1174,10 +1192,22 @@
                 <div class="text-2xl mb-1">${cur.symbol}</div>
                 <div class="font-mono font-bold text-emerald-400 text-sm">${cur.code}</div>
                 <div class="text-xs text-zinc-500 truncate">${cur.name}</div>
-                ${cur.is_main ? '<div class="text-[0.6rem] uppercase tracking-widest text-amber-500 mt-1">★ Main</div>' : ""}
+                ${cur.is_main ? '<div class="text-[0.6rem] uppercase tracking-widest text-amber-500 mt-1">★ Main</div>' : `<button onclick="ConfigView.setMainCurrency('${cur.code}')" class="text-[0.6rem] uppercase tracking-widest text-emerald-500 hover:text-emerald-400 mt-1">Set Base</button>`}
               `;
             container.appendChild(card);
           });
+        },
+
+        async setMainCurrency(code) {
+          try {
+            await ApiClient._request(`/api/v1/currencies/${code}/set_main`, { method: "PUT" });
+            const res = await ApiClient.get("/api/v1/currencies");
+            App.state.currencies = res.data;
+            this.renderCurrencies();
+            CalculatorView.init();
+          } catch (error) {
+            alert(`Error setting base currency: ${error.message}`);
+          }
         },
 
         renderRates() {
@@ -1235,9 +1265,19 @@
           this.fetchAndRender();
         },
 
-        getRate(code) {
+        getBaseCurrency() {
+          return App.state.currencies.find(c => c.is_main === true);
+        },
+
+        getInverseRate(code) {
+          const base = this.getBaseCurrency();
+          if (base && code === base.code) return 1.0;
           const r = App.state.rates.find(x => x.currency_code === code);
-          return r ? parseFloat(r.rate) : 1.0;
+          return r ? parseFloat(r.inverse_rate) : 1.0;
+        },
+
+        truncate(value) {
+          return Math.round((value + Number.EPSILON) * 10000) / 10000;
         },
 
         async fetchAndRender() {
@@ -1271,14 +1311,14 @@
             const productName = product ? product.name : tx.product_id;
             const time = new Date(tx.created_at).toLocaleTimeString();
 
-            const sourceRate = this.getRate(tx.currency_code);
+            const sourceInverse = this.getInverseRate(tx.currency_code);
 
             let convertedCol = "";
             let convertedCards = "";
             App.state.currencies.forEach(cur => {
               if (cur.code === tx.currency_code) return;
-              const targetRate = this.getRate(cur.code);
-              const converted = (parseFloat(tx.unit_price) / sourceRate) * targetRate;
+              const targetInverse = this.getInverseRate(cur.code);
+              const converted = this.truncate((parseFloat(tx.unit_price) * sourceInverse) / targetInverse);
               const formatted = converted.toFixed(2);
               convertedCol += `<span class="block text-xs font-mono">${cur.code}: ${formatted}</span>`;
               convertedCards += `<span class="text-xs font-mono">${cur.code}: ${formatted}</span>`;
@@ -1330,11 +1370,11 @@
             const product = App.state.products.find(p => p.id === tx.product_id);
             const productName = product ? product.name : tx.product_id;
             const time = new Date(tx.created_at).toLocaleTimeString();
-            const sourceRate = this.getRate(tx.currency_code);
+            const sourceInverse = this.getInverseRate(tx.currency_code);
 
             const converted = currencyCodes.map(code => {
-              const targetRate = this.getRate(code);
-              return ((parseFloat(tx.unit_price) / sourceRate) * targetRate).toFixed(2);
+              const targetInverse = this.getInverseRate(code);
+              return this.truncate((parseFloat(tx.unit_price) * sourceInverse) / targetInverse).toFixed(2);
             });
 
             return [time, productName, tx.transaction_type, tx.quantity, tx.unit_price, ...converted];
