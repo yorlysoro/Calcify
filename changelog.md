@@ -11,20 +11,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Domain:** `domain/exceptions.py` extracted as centralized exception module for domain layer, decoupling exceptions from services and preventing circular import chains.
 - **Domain:** `inverse_rate: Decimal` field in `CurrencyRate` entity — pre-calculated reciprocal of `rate` stored with `Numeric(24, 12)` precision for inverse-based conversion math (`domain/models.py`).
+- **Domain:** `comment: str = ""` field in `Transaction` entity for optional sale notes (`domain/models.py`).
 - **Domain:** `CurrencyConverter.convert(amount, source_inverse, target_inverse)` static method in `domain/services/currency_converter.py` implementing inverse-rate formula `(amount * src_inv) / tgt_inv` with 4-decimal `ROUND_HALF_UP` quantization.
+- **Domain:** `InvalidExchangeRateError` raised when any inverse rate is zero during conversion (`domain/exceptions.py`).
+- **Use Case:** `CurrencyConversionUseCase` with constructor DI for `ICurrencyRepository` and `ICurrencyRateRepository` — converts amounts through the main/base currency using the corrected formula (`use_cases/currency_conversion.py`).
+- **Use Case:** `RegisterSaleUseCase` with constructor DI — validates stock, creates OUT transaction, reduces inventory, all in a single atomic session (`use_cases/sales.py`).
 - **Infrastructure:** `inverse_rate` column in `CurrencyRateModel` ORM with `Numeric(24, 12)` and `server_default="0"` (`infrastructure/database/models.py`).
-- **Infrastructure:** Offline DDL SQL trace generation — `bootstrap_migrations` writes `schema_trace.sql` via Alembic's `--sql` flag for manual review and debugging (`infrastructure/database/auto_migrate.py`).
+- **Infrastructure:** `comment: Mapped[str]` column in `TransactionModel` ORM with `server_default=""` (`infrastructure/database/models.py`).
+- **Infrastructure:** Offline DDL SQL trace generation — `bootstrap_migrations` writes `schema_trace.sql` to AppData dir via Alembic's `--sql` flag for manual review and debugging (`infrastructure/database/auto_migrate.py`).
 - **Infrastructure:** `ICurrencyRepository.set_main(code)` abstract method and `SqlAlchemyCurrencyRepository.set_main` implementation — batch-updates all currencies to `is_main=False`, then sets the target currency to `True` (`infrastructure/repositories/interfaces.py`, `infrastructure/repositories/sqlalchemy_repos.py`).
+- **Infrastructure:** Diagnostic logging in `bootstrap_migrations` — logs data dir path, target DB URL, metadata tables, `alembic_version` existence, and current DB tables (`infrastructure/database/auto_migrate.py`).
+- **Infrastructure:** Legacy artifact migration — `alembic.ini`, `migrations/`, and `schema_trace.sql` are automatically moved from project root to AppData dir (`infrastructure/database/auto_migrate.py`).
+- **Infrastructure:** Stamp fallback — if all app tables exist without `alembic_version`, Alembic stamps the database as current instead of failing on duplicate DDL (`infrastructure/database/auto_migrate.py`).
 - **API:** `PUT /api/v1/currencies/<code>/set_main` endpoint designating a currency as the main/base currency with 404 on missing currency (`presentation/api/routes.py`).
 - **API:** `inverse_rate` serialized in `POST /api/v1/rates` and `GET /api/v1/rates/latest` responses (`presentation/api/routes.py`).
 - **API:** Global `@api_bp.errorhandler(Exception)` catching all unhandled API exceptions with stack trace logging and generic 500 response (`presentation/api/routes.py`).
+- **API:** `POST /api/v1/convert` endpoint accepting `{source_code, target_code, amount}` — returns converted amount with 4-decimal precision (`presentation/api/routes.py`).
+- **API:** `POST /api/v1/sales` endpoint accepting `{product_id, quantity, comment?}` — validates stock, registers OUT transaction, reduces inventory (`presentation/api/routes.py`).
 - **Frontend:** "Set Base" button on non-main currency cards in Config view, allowing users to designate a base currency interactively (`presentation/templates/index.html`).
 - **Frontend:** Calculator and Reports views now use `inverse_rate`-based cross-rate formula (`truncate((amount * sourceInverse) / targetInverse)`) for accurate multi-currency conversion (`presentation/templates/index.html`).
 - **Frontend:** Warning placeholder (`#calc-warning`) and base-currency guard message when no base currency is set in the calculator (`presentation/templates/index.html`).
-- **Testing:** `tests/domain/test_currency_converter.py` — 6 unit tests for inverse-rate-based `CurrencyConverter.convert`: precision, identity, base→target, target→base, cross-currency, and zero-inverse error cases.
+- **Frontend:** Sales view tab (🛒 Ventas) with product selector, quantity input, optional comment field, and real-time product search filter (`presentation/templates/index.html`).
+- **Frontend:** Product search filter in Sales view — filters `<option>` elements in real-time, shows "— Sin resultados —" placeholder (`presentation/templates/index.html`).
+- **Frontend:** Rate display fix in calculator — badge now shows the actual exchange rate (`targetInverse / sourceInverse`) instead of the inverse (`presentation/templates/index.html`).
+- **Testing:** `tests/domain/test_currency_converter.py` — 12 unit tests for `CurrencyConverter.convert`: precision, identity, base↔non-base, cross-currency, and zero-inverse error cases.
 - **Testing:** `test_set_main_currency` and `test_set_main_currency_not_found` — integration tests for `PUT /api/v1/currencies/<code>/set_main` (`tests/presentation/test_routes.py`).
 - **Testing:** `test_calculator_precision` — verifies that `GET /api/v1/rates/latest` returns full Decimal precision (e.g. `"3.333333"` not `"3.3333330"`) (`tests/presentation/test_routes.py`).
 - **Testing:** `test_5_currency_rates_add_inverse_rate` — Alembic migration test for adding the `inverse_rate` column with `server_default` (`tests/infrastructure/test_auto_migrate.py`).
+- **Testing:** 4 new migration tests: artifacts in `data_dir` (`test_1`), stamp fallback regression (`test_7`), CWD independence (`test_8`), legacy artifact migration (`test_9`) (`tests/infrastructure/test_auto_migrate.py`).
+- **Testing:** 10 use case tests for `CurrencyConversionUseCase` — 4 conversion scenarios + 6 error cases (`tests/use_cases/test_currency_conversion.py`).
+- **Testing:** 9 use case tests for `RegisterSaleUseCase` — stock reduction, OUT transaction, comment, currency, insufficient stock, not found, zero/negative quantity, failure rollback (`tests/use_cases/test_sales.py`).
+- **Testing:** 6 convert endpoint tests + 6 sales endpoint tests — auth guard, success, error cases, missing payload (`tests/presentation/test_routes.py`).
 
 ### Changed
 
@@ -33,11 +50,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Refactor:** `SqlAlchemyCurrencyRateRepository.save` and domain mapping now persist/map `inverse_rate` alongside `rate` (`infrastructure/repositories/sqlalchemy_repos.py`).
 - **API:** `GET /api/v1/products` error handler suppressed verbose debug trace from JSON 500 responses (now returns a generic message) (`presentation/api/routes.py`).
 - **API:** `GET /api/v1/rates/latest` error handler re-enabled stack trace printing for debugging (`presentation/api/routes.py`).
+- **Refactor:** `SqlAlchemyTransactionRepository.save` and `_map_to_domain` now persist/map `comment` field (`infrastructure/repositories/sqlalchemy_repos.py`).
+- **Migration:** Migration artifacts (`alembic.ini`, `migrations/`) moved from project root to `get_db_path("Calcify").parent` (AppData) alongside the database file (`infrastructure/database/auto_migrate.py`, `infrastructure/database/migrations.py`).
+- **Migration:** `env.py` patching now includes `import sys` and `sys.path.insert(0, project_root)` before model imports, ensuring reliable model discovery regardless of CWD (`infrastructure/database/auto_migrate.py`).
 
 ### Fixed
 
 - **Core:** Global `@app.errorhandler(Exception)` catches all unhandled exceptions system-wide with proper logging and JSON error response, falling through to Werkzeug for HTTP exceptions (`app.py`).
 - **Logging:** Log format changed from `"%(levelname)s: %(message)s"` to `"%(asctime)s [%(levelname)s] %(module)s: %(message)s"` for better traceability (`app.py`).
+- **Migration (Bug 1):** `bootstrap_migrations` now runs BEFORE `initialize_security` in `app.py`. Previously `setup_security.py:create_all()` created all tables outside Alembic, causing `command.upgrade` to fail silently and `alembic_version` to never be created — new fields were never auto-detected (`app.py:110-125`).
+- **Migration (Bug 2):** `env.py` patching includes `sys.path.insert(0, project_root)` so `from infrastructure.database.models import Base` works even when Python is invoked from a directory outside the project root (`infrastructure/database/auto_migrate.py:77-88`).
+- **Migration:** Error handling in `bootstrap_migrations` now distinguishes between "no changes" (logged as info) and real Alembic errors (logged as error + re-raised), instead of silently swallowing all `CommandError` exceptions (`infrastructure/database/auto_migrate.py:124-133`).
+- **Currency Converter:** Fixed formula from `(amount * source_inverse) / target_inverse` to `(amount * target_inverse) / source_inverse` — the old formula transposed source/target, causing incorrect cross-currency results (`domain/services/currency_converter.py`).
+- **Rate display:** Calculator badge now shows the actual exchange rate (`targetInverse / sourceInverse`) instead of the reciprocal (`presentation/templates/index.html:818`).
 
 ## [0.7.0] - 2026-06-03
 

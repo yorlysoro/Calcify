@@ -133,6 +133,12 @@
         >
           <span>📊</span> Reports
         </button>
+        <button
+          data-target="view-sales"
+          class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700"
+        >
+          <span>🛒</span> Ventas
+        </button>
       </nav>
     </header>
 
@@ -637,6 +643,46 @@
         </div>
         <div id="report-cards-container" class="grid grid-cols-1 gap-4 md:hidden w-full mt-4"></div>
       </section>
+
+      <section id="view-sales" class="hidden w-full">
+        <div class="mb-6">
+          <h2 class="text-2xl font-light text-white">
+            <strong class="font-bold text-emerald-500">Registrar</strong> Venta
+          </h2>
+          <p class="text-zinc-500 text-sm">Registra las ventas diarias y controla el inventario.</p>
+        </div>
+        <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 shadow-2xl">
+          <form id="sales-form" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Producto</label>
+                <input type="text" id="sales-product-search" placeholder="Buscar producto..." class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none mb-2" />
+                <select id="sales-product" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"></select>
+              </div>
+              <div>
+                <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Cantidad</label>
+                <input type="number" id="sales-quantity" required min="1" step="1" placeholder="1" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Precio Unitario</label>
+                <input type="number" id="sales-unit-price" required min="0" step="0.01" placeholder="0.00" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Moneda</label>
+                <select id="sales-currency" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"></select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Comentario <span class="text-zinc-600">(opcional)</span></label>
+              <textarea id="sales-comment" rows="2" placeholder="Notas sobre la venta..." class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none resize-none"></textarea>
+            </div>
+            <button type="submit" id="sales-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">
+              Registrar Venta
+            </button>
+            <div id="sales-message"></div>
+          </form>
+        </div>
+      </section>
     </main>
 
     <script>
@@ -726,6 +772,7 @@
           InventoryView.init();
           ConfigView.init();
           ReportView.init();
+          SalesView.init();
 
           // Bind Tab Navigation
           document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -814,8 +861,8 @@
             if (cur.code === baseCur) return;
 
             const targetInverse = this.getInverseRate(cur.code);
-            const finalVal = this.truncate((amount * sourceInverse) / targetInverse);
-            const exchangeRate = this.truncate(sourceInverse / targetInverse).toFixed(4);
+            const finalVal = this.truncate((amount * targetInverse) / sourceInverse);
+            const exchangeRate = this.truncate(targetInverse / sourceInverse).toFixed(4);
 
             this.resultsEl.innerHTML += `
                 <div class="bg-black border border-zinc-800 rounded-xl p-5 flex flex-col justify-between shadow-lg">
@@ -1318,7 +1365,7 @@
             App.state.currencies.forEach(cur => {
               if (cur.code === tx.currency_code) return;
               const targetInverse = this.getInverseRate(cur.code);
-              const converted = this.truncate((parseFloat(tx.unit_price) * sourceInverse) / targetInverse);
+              const converted = this.truncate((parseFloat(tx.unit_price) * targetInverse) / sourceInverse);
               const formatted = converted.toFixed(2);
               convertedCol += `<span class="block text-xs font-mono">${cur.code}: ${formatted}</span>`;
               convertedCards += `<span class="text-xs font-mono">${cur.code}: ${formatted}</span>`;
@@ -1374,7 +1421,7 @@
 
             const converted = currencyCodes.map(code => {
               const targetInverse = this.getInverseRate(code);
-              return this.truncate((parseFloat(tx.unit_price) * sourceInverse) / targetInverse).toFixed(2);
+              return this.truncate((parseFloat(tx.unit_price) * targetInverse) / sourceInverse).toFixed(2);
             });
 
             return [time, productName, tx.transaction_type, tx.quantity, tx.unit_price, ...converted];
@@ -1394,6 +1441,120 @@
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
+        },
+      };
+
+      // ==========================================
+      // 7. SALES VIEW MODULE
+      // ==========================================
+      const SalesView = {
+        init() {
+          this.productSelect = document.getElementById("sales-product");
+          this.currencySelect = document.getElementById("sales-currency");
+          this.quantityInput = document.getElementById("sales-quantity");
+          this.priceInput = document.getElementById("sales-unit-price");
+          this.commentInput = document.getElementById("sales-comment");
+          this.messageEl = document.getElementById("sales-message");
+          this.submitBtn = document.getElementById("sales-submit-btn");
+          this.searchInput = document.getElementById("sales-product-search");
+
+          this.populateSelects();
+          this.searchInput.addEventListener("input", () => this.filterProducts());
+          document.getElementById("sales-form").addEventListener("submit", (e) => this.handleSubmit(e));
+        },
+
+        populateSelects() {
+          this.productSelect.innerHTML = "";
+          App.state.products.forEach((p) => {
+            const opt = document.createElement("option");
+            opt.value = p.id;
+            opt.textContent = `${p.name} (Stock: ${p.stock_quantity})`;
+            opt.dataset.stock = p.stock_quantity;
+            this.productSelect.appendChild(opt);
+          });
+
+          this.currencySelect.innerHTML = "";
+          App.state.currencies.forEach((c) => {
+            const opt = document.createElement("option");
+            opt.value = c.code;
+            opt.textContent = `${c.code} - ${c.name}`;
+            this.currencySelect.appendChild(opt);
+          });
+
+          this.searchInput.value = "";
+          this.filterProducts();
+        },
+
+        filterProducts() {
+          const searchTerm = this.searchInput.value.toLowerCase();
+          const options = this.productSelect.querySelectorAll("option");
+
+          let visibleCount = 0;
+          options.forEach((opt) => {
+            if (opt.dataset.placeholder) {
+              opt.remove();
+              return;
+            }
+            const match = opt.textContent.toLowerCase().includes(searchTerm);
+            opt.style.display = match ? "" : "none";
+            if (match) visibleCount++;
+          });
+
+          if (visibleCount === 0) {
+            const placeholder = document.createElement("option");
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            placeholder.dataset.placeholder = "true";
+            placeholder.textContent = "\u2014 Sin resultados \u2014";
+            this.productSelect.appendChild(placeholder);
+          }
+        },
+
+        async handleSubmit(e) {
+          e.preventDefault();
+          this.submitBtn.disabled = true;
+          this.submitBtn.textContent = "Registrando...";
+          this.messageEl.innerHTML = "";
+
+          const productId = this.productSelect.value;
+          const productName = this.productSelect.options[this.productSelect.selectedIndex]?.text || productId;
+          const quantity = parseInt(this.quantityInput.value) || 0;
+          const unitPrice = this.priceInput.value;
+          const currencyCode = this.currencySelect.value;
+          const comment = this.commentInput.value;
+
+          try {
+            const payload = {
+              product_id: productId,
+              quantity: quantity,
+              unit_price: unitPrice,
+              currency_code: currencyCode,
+              comment: comment,
+            };
+            await ApiClient.post("/api/v1/sales", payload);
+
+            // Re-fetch products (stock updated) and transactions
+            const [prodRes, txRes] = await Promise.all([
+              ApiClient.get("/api/v1/products"),
+              ApiClient.get("/api/v1/transactions"),
+            ]);
+            App.state.products = prodRes.data;
+            App.state.transactions = txRes.data;
+
+            // Refresh InventoryView stock display
+            if (typeof InventoryView !== "undefined") {
+              InventoryView.render();
+            }
+
+            this.messageEl.innerHTML = `<div class="text-emerald-500 text-sm font-bold">✓ Venta registrada exitosamente.</div>`;
+            document.getElementById("sales-form").reset();
+            this.populateSelects();
+          } catch (error) {
+            this.messageEl.innerHTML = `<div class="text-red-500 text-sm">${error.message}</div>`;
+          } finally {
+            this.submitBtn.disabled = false;
+            this.submitBtn.textContent = "Registrar Venta";
+          }
         },
       };
 

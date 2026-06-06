@@ -30,7 +30,7 @@
 import traceback
 from presentation.api.auth import login_required
 import logging
-from typing import Optional, Tuple, Dict, Any, List
+from typing import Optional, Tuple, Dict, Any, List, Union
 from uuid import UUID, uuid4
 from decimal import Decimal, InvalidOperation
 
@@ -49,8 +49,10 @@ from infrastructure.repositories.sqlalchemy_repos import (
 
 from datetime import datetime, timezone
 
-# Import the Use Case
+# Import the Use Cases
 from use_cases.export_backup import ExportBackupUseCase
+from use_cases.currency_conversion import CurrencyConversionUseCase
+from use_cases.sales import RegisterSaleUseCase
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -554,6 +556,65 @@ def get_latest_currency_rates() -> Tuple[Response, int]:
         return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
 
+@api_bp.route("/convert", methods=["POST"])
+@login_required
+def convert_currency() -> Tuple[Response, int]:
+    """
+    Converts a monetary amount from one currency to another,
+    always routing through the main/base currency for precision.
+
+    Expects JSON payload:
+        source_currency_code (str): ISO code of the source currency.
+        target_currency_code (str): ISO code of the target currency.
+        amount (str): Decimal amount as string to preserve precision.
+
+    Returns:
+        JSON with source_currency_code, target_currency_code, amount,
+        result, and effective rate. All Decimals serialized as strings.
+    """
+    payload: Optional[Dict[str, Any]] = request.get_json()
+    if not payload:
+        return jsonify({"error": "Invalid or missing JSON payload."}), 400
+
+    try:
+        source_code: str = str(payload["source_currency_code"])
+        target_code: str = str(payload["target_currency_code"])
+        amount: Decimal = Decimal(str(payload["amount"]))
+
+        currency_repo = SqlAlchemyCurrencyRepository(session=g.db_session)
+        rate_repo = SqlAlchemyCurrencyRateRepository(session=g.db_session)
+        use_case = CurrencyConversionUseCase(
+            currency_repo=currency_repo,
+            rate_repo=rate_repo,
+        )
+
+        result_data: Dict[str, Union[str, Decimal]] = use_case.execute(
+            source_currency_code=source_code,
+            target_currency_code=target_code,
+            amount=amount,
+        )
+
+        return jsonify({
+            "data": {
+                "source_currency_code": result_data["source_currency_code"],
+                "target_currency_code": result_data["target_currency_code"],
+                "amount": str(result_data["amount"]),
+                "result": str(result_data["result"]),
+                "rate": str(result_data["rate"]),
+            },
+        }), 200
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing required field: {str(e)}"}), 400
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except InvalidOperation:
+        return jsonify({"error": "Amount must be a valid decimal number."}), 400
+    except Exception as e:
+        logger.error(f"Failed to convert currency: {str(e)}")
+        return jsonify({"error": "Failed to process currency conversion."}), 500
+
+
 @api_bp.route("/rates/<rate_id>", methods=["DELETE"])
 @login_required
 def delete_currency_rate(rate_id: str) -> Tuple[Response, int]:
@@ -620,6 +681,61 @@ def export_backup() -> Response:
     except Exception as e:
         logger.error(f"Failed to export system backup: {str(e)}")
         return jsonify({"error": "Failed to generate system backup."}), 500
+
+@api_bp.route("/sales", methods=["POST"])
+@login_required
+def register_sale():
+    """Register a sale: validate stock, create OUT transaction, reduce stock."""
+    payload = request.get_json()
+    if not payload:
+        return jsonify({"error": "Invalid or missing JSON payload."}), 400
+
+    try:
+        product_id = UUID(payload["product_id"])
+        quantity = int(payload["quantity"])
+        unit_price = Decimal(str(payload["unit_price"]))
+        currency_code = str(payload["currency_code"])
+        comment = str(payload.get("comment", ""))
+
+        use_case = RegisterSaleUseCase(
+            product_repo=SqlAlchemyProductRepository(session=g.db_session),
+            transaction_repo=SqlAlchemyTransactionRepository(session=g.db_session),
+        )
+        result = use_case.execute(
+            product_id=product_id,
+            quantity=quantity,
+            unit_price=unit_price,
+            currency_code=currency_code,
+            comment=comment,
+        )
+        g.db_session.commit()
+
+        return jsonify({
+            "message": "Sale registered successfully.",
+            "data": {
+                "transaction_id": str(result.transaction.id),
+                "product_id": str(result.transaction.product_id),
+                "remaining_stock": result.remaining_stock,
+                "transaction_type": result.transaction.transaction_type,
+                "quantity": result.transaction.quantity,
+                "unit_price": str(result.transaction.unit_price),
+                "currency_code": result.transaction.currency_code,
+                "comment": result.transaction.comment,
+                "created_at": result.transaction.created_at.isoformat(),
+            },
+        }), 201
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing required field: {str(e)}"}), 400
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except InvalidOperation:
+        return jsonify({"error": "Financial values must be valid decimal numbers."}), 400
+    except Exception as e:
+        g.db_session.rollback()
+        logger.error(f"Failed to register sale: {str(e)}")
+        return jsonify({"error": "Failed to process the sale request."}), 500
+
 
 @api_bp.route("/currencies/<string:code>/set_main", methods=["PUT"])
 @login_required

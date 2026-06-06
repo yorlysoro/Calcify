@@ -108,10 +108,8 @@ def create_app(config_name: Optional[str] = None) -> Flask:
                 )
                 test_session.commit()
         else:
-            # Idempotent Security Bootstrap (Prevents locking out active sessions)
-            initialize_security("Calcify")
-
             # Auto-migrations: bootstraps Alembic, generates, and applies schema updates
+            # MUST run before initialize_security so Alembic tracks the schema.
             try:
                 bootstrap_migrations(str(engine.url), Base.metadata)
             except Exception as e:
@@ -119,6 +117,9 @@ def create_app(config_name: Optional[str] = None) -> Flask:
                     f"Application boot aborted. Migration failed: {str(e)}"
                 )
                 raise SystemExit(1)
+
+            # Idempotent Security Bootstrap (Prevents locking out active sessions)
+            initialize_security("Calcify")
 
         # Dynamically inject the cryptographic App Secret Key into Flask
         with SessionLocal() as temp_session:

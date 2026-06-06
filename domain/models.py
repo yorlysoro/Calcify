@@ -223,6 +223,7 @@ class Transaction:
     unit_price: Decimal
     currency_code: str
     created_at: datetime
+    comment: str = ""
 
     def __post_init__(self) -> None:
         """

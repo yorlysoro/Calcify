@@ -3,11 +3,19 @@ from decimal import Decimal
 from domain.services.currency_converter import CurrencyConverter
 from domain.exceptions import InvalidExchangeRateError
 
-
+# Arbitrary test constants (main = USD)
 VES_RATE: Decimal = Decimal("548.59")
 VES_INVERSE: Decimal = Decimal("1") / VES_RATE
 EUR_RATE: Decimal = Decimal("0.92")
 EUR_INVERSE: Decimal = Decimal("1") / EUR_RATE
+
+# Realistic example constants (main = Bs)
+#   rate  = how many main currency units per 1 unit of this currency
+#   inverse = 1/rate
+BS_USD_RATE: Decimal = Decimal("500")
+BS_USD_INVERSE: Decimal = Decimal("1") / BS_USD_RATE  # 0.002
+BS_EUR_RATE: Decimal = Decimal("600")
+BS_EUR_INVERSE: Decimal = Decimal("1") / BS_EUR_RATE  # 0.001666667
 
 
 def test_inverse_multiplication_precision() -> None:
@@ -24,40 +32,96 @@ def test_inverse_rate_multiplication_identity() -> None:
     assert rounded == Decimal("100.0000")
 
 
-def test_convert_base_to_target() -> None:
+def test_main_to_main_identity() -> None:
     """
-    Base (USD) to Target (VES):
-    amount=100, source_inverse=1, target_inverse=VES_INVERSE
-    Expected: (100 * 1) / VES_INVERSE = 100 * VES_RATE = 54859.0000
-    """
-    result: Decimal = CurrencyConverter.convert(
-        Decimal("100"), Decimal("1"), VES_INVERSE,
-    )
-    assert result == Decimal("54859.0000")
-
-
-def test_convert_target_to_base() -> None:
-    """
-    Target (VES) to Base (USD):
-    amount=54859, source_inverse=VES_INVERSE, target_inverse=1
-    Expected: (54859 * VES_INVERSE) / 1 = 100.0000
+    Main → Main: both inverses are 1, amount stays unchanged.
+    Formula: (amount * 1) / 1 = amount
     """
     result: Decimal = CurrencyConverter.convert(
-        Decimal("54859"), VES_INVERSE, Decimal("1"),
+        Decimal("100"), Decimal("1"), Decimal("1"),
     )
     assert result == Decimal("100.0000")
 
 
+def test_convert_main_to_non_main() -> None:
+    """
+    Main (inv=1) → VES (inv=VES_INVERSE):
+    Formula: (100 * VES_INVERSE) / 1 = 100 / VES_RATE = 0.1823
+    """
+    result: Decimal = CurrencyConverter.convert(
+        Decimal("100"), Decimal("1"), VES_INVERSE,
+    )
+    assert result == Decimal("0.1823")
+
+
+def test_convert_non_main_to_main() -> None:
+    """
+    VES (inv=VES_INVERSE) → Main (inv=1):
+    Formula: (100 * 1) / VES_INVERSE = 100 * VES_RATE = 54859.0000
+    """
+    result: Decimal = CurrencyConverter.convert(
+        Decimal("100"), VES_INVERSE, Decimal("1"),
+    )
+    assert result == Decimal("54859.0000")
+
+
 def test_convert_cross_currency() -> None:
     """
-    Cross Currency (EUR to VES where Base is USD):
-    amount=100, source_inverse=EUR_INVERSE, target_inverse=VES_INVERSE
-    Expected: (100 * EUR_INVERSE) / VES_INVERSE = 100 * EUR_INVERSE * VES_RATE = 59629.3478
+    EUR (inv=EUR_INVERSE) → VES (inv=VES_INVERSE):
+    Formula: (100 * VES_INVERSE) / EUR_INVERSE = 100 * 0.92 / 548.59 = 0.1677
     """
     result: Decimal = CurrencyConverter.convert(
         Decimal("100"), EUR_INVERSE, VES_INVERSE,
     )
-    assert result == Decimal("59629.3478")
+    assert result == Decimal("0.1677")
+
+
+def test_convert_main_to_non_main_bs_usd() -> None:
+    """
+    User example: Main (Bs) → USD
+    amount=5000 Bs, source_inv=1, target_inv=0.002
+    Formula: (5000 * 0.002) / 1 = 10.0000 USD
+    """
+    result: Decimal = CurrencyConverter.convert(
+        Decimal("5000"), Decimal("1"), BS_USD_INVERSE,
+    )
+    assert result == Decimal("10.0000")
+
+
+def test_convert_non_main_to_main_usd_bs() -> None:
+    """
+    User example: USD → Main (Bs)
+    amount=10 USD, source_inv=0.002, target_inv=1
+    Formula: (10 * 1) / 0.002 = 5000.0000 Bs
+    """
+    result: Decimal = CurrencyConverter.convert(
+        Decimal("10"), BS_USD_INVERSE, Decimal("1"),
+    )
+    assert result == Decimal("5000.0000")
+
+
+def test_convert_cross_currency_usd_to_eur() -> None:
+    """
+    User example: USD → EUR (main=Bs)
+    amount=10 USD, source_inv=0.002, target_inv=0.001666667
+    Formula: (10 * 0.001666667) / 0.002 = 8.3333
+    """
+    result: Decimal = CurrencyConverter.convert(
+        Decimal("10"), BS_USD_INVERSE, BS_EUR_INVERSE,
+    )
+    assert result == Decimal("8.3333")
+
+
+def test_convert_cross_currency_eur_to_usd() -> None:
+    """
+    User example: EUR → USD (main=Bs)
+    amount=10 EUR, source_inv=0.001666667, target_inv=0.002
+    Formula: (10 * 0.002) / 0.001666667 = 12.0000
+    """
+    result: Decimal = CurrencyConverter.convert(
+        Decimal("10"), BS_EUR_INVERSE, BS_USD_INVERSE,
+    )
+    assert result == Decimal("12.0000")
 
 
 def test_convert_zero_source_inverse_raises_error() -> None:

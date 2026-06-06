@@ -342,7 +342,8 @@ class SqlAlchemyTransactionRepository(ITransactionRepository):
             quantity=model.quantity,
             unit_price=model.unit_price,
             currency_code=model.currency_code,
-            created_at=dt
+            created_at=dt,
+            comment=model.comment or "",
         )
 
     def get_by_id(self, transaction_id: UUID) -> Optional[Transaction]:
@@ -377,6 +378,7 @@ class SqlAlchemyTransactionRepository(ITransactionRepository):
             existing_model.unit_price = transaction.unit_price
             existing_model.currency_code = transaction.currency_code
             existing_model.created_at = transaction.created_at
+            existing_model.comment = transaction.comment
         else:
             new_model = TransactionModel(
                 id=transaction.id,
@@ -385,7 +387,8 @@ class SqlAlchemyTransactionRepository(ITransactionRepository):
                 quantity=transaction.quantity,
                 unit_price=transaction.unit_price,
                 currency_code=transaction.currency_code,
-                created_at=transaction.created_at
+                created_at=transaction.created_at,
+                comment=transaction.comment,
             )
             self._session.add(new_model)
     

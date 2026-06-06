@@ -109,6 +109,8 @@ class TransactionModel(Base):
     
     # We pass a callable lambda using timezone-aware UTC datetime. 
     # datetime.utcnow() is deprecated in Python 3.12+.
+    comment: Mapped[str] = mapped_column(String(500), server_default="", nullable=False)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), 
         default=lambda: datetime.now(timezone.utc), 

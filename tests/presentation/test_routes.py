@@ -43,7 +43,7 @@ from infrastructure.repositories.sqlalchemy_repos import (
     SqlAlchemyCurrencyRateRepository,
     SqlAlchemyTransactionRepository,
 )
-from infrastructure.database.models import CurrencyModel
+from infrastructure.database.models import CurrencyModel, CurrencyRateModel, ProductModel
 
 
 @pytest.fixture
@@ -558,6 +558,258 @@ def test_get_latest_currency_rates(client: FlaskClient, seed_admin_password: Non
     eur_rates = [r for r in data if r["currency_code"] == "EUR"]
     assert len(eur_rates) == 1
     assert eur_rates[0]["rate"] == "1.100000"
+
+
+def test_convert_endpoint_requires_authentication(client: FlaskClient) -> None:
+    """POST /api/v1/convert must return 401 without auth."""
+    response = client.post("/api/v1/convert", json={
+        "source_currency_code": "USD",
+        "target_currency_code": "EUR",
+        "amount": "10.00",
+    })
+    assert response.status_code == 401
+
+
+def test_convert_non_main_to_main(client: FlaskClient, seed_admin_password: None) -> None:
+    """10 USD → Bs: returns 5000.0000 with rate."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        g.db_session.merge(CurrencyModel(code="BS", name="Bolivar", symbol="Bs", is_main=True))
+        g.db_session.merge(CurrencyModel(code="USD", name="Dollar", symbol="$", is_main=False))
+        g.db_session.merge(CurrencyRateModel(
+            id=uuid4(), currency_code="USD", rate=Decimal("500"),
+            inverse_rate=Decimal("0.002"),
+            created_at=datetime.now(timezone.utc),
+        ))
+        g.db_session.commit()
+
+    response = client.post("/api/v1/convert", json={
+        "source_currency_code": "USD",
+        "target_currency_code": "BS",
+        "amount": "10.00",
+    })
+
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data["source_currency_code"] == "USD"
+    assert data["target_currency_code"] == "BS"
+    assert data["amount"] == "10.00"
+    assert data["result"] == "5000.0000"
+    assert isinstance(data["result"], str)
+
+
+def test_convert_main_to_non_main(client: FlaskClient, seed_admin_password: None) -> None:
+    """5000 Bs → USD: returns 10.0000 with rate."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        g.db_session.merge(CurrencyModel(code="BS", name="Bolivar", symbol="Bs", is_main=True))
+        g.db_session.merge(CurrencyModel(code="USD", name="Dollar", symbol="$", is_main=False))
+        g.db_session.merge(CurrencyRateModel(
+            id=uuid4(), currency_code="USD", rate=Decimal("500"),
+            inverse_rate=Decimal("0.002"),
+            created_at=datetime.now(timezone.utc),
+        ))
+        g.db_session.commit()
+
+    response = client.post("/api/v1/convert", json={
+        "source_currency_code": "BS",
+        "target_currency_code": "USD",
+        "amount": "5000.00",
+    })
+
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data["result"] == "10.0000"
+    assert data["rate"]
+
+
+def test_convert_cross_currency(client: FlaskClient, seed_admin_password: None) -> None:
+    """10 USD → EUR: returns 8.3333."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        g.db_session.merge(CurrencyModel(code="BS", name="Bolivar", symbol="Bs", is_main=True))
+        g.db_session.merge(CurrencyModel(code="USD", name="Dollar", symbol="$", is_main=False))
+        g.db_session.merge(CurrencyModel(code="EUR", name="Euro", symbol="\u20ac", is_main=False))
+        g.db_session.merge(CurrencyRateModel(
+            id=uuid4(), currency_code="USD", rate=Decimal("500"),
+            inverse_rate=Decimal("0.002"),
+            created_at=datetime.now(timezone.utc),
+        ))
+        g.db_session.merge(CurrencyRateModel(
+            id=uuid4(), currency_code="EUR", rate=Decimal("600"),
+            inverse_rate=Decimal("0.001666667"),
+            created_at=datetime.now(timezone.utc),
+        ))
+        g.db_session.commit()
+
+    response = client.post("/api/v1/convert", json={
+        "source_currency_code": "USD",
+        "target_currency_code": "EUR",
+        "amount": "10.00",
+    })
+
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data["result"] == "8.3333"
+
+
+def test_convert_missing_payload(client: FlaskClient, seed_admin_password: None) -> None:
+    """Missing payload must return 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.post("/api/v1/convert", json={})
+    assert response.status_code == 400
+    assert "error" in response.get_json()
+
+
+def test_convert_invalid_amount(client: FlaskClient, seed_admin_password: None) -> None:
+    """Invalid amount must return 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.post("/api/v1/convert", json={
+        "source_currency_code": "USD",
+        "target_currency_code": "EUR",
+        "amount": "not-a-number",
+    })
+    assert response.status_code == 400
+    assert "error" in response.get_json()
+
+
+def test_sales_endpoint_requires_authentication(client: FlaskClient) -> None:
+    """POST /api/v1/sales must return 401 without auth."""
+    response = client.post("/api/v1/sales", json={
+        "product_id": str(uuid4()),
+        "quantity": 1,
+        "unit_price": "10.00",
+        "currency_code": "USD",
+    })
+    assert response.status_code == 401
+
+
+def test_sales_success(client: FlaskClient, seed_admin_password: None) -> None:
+    """Valid sale reduces stock and creates OUT transaction."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    target_product_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        prod_repo = SqlAlchemyProductRepository(g.db_session)
+        prod_repo.save(Product(
+            id=target_product_id, name="Sale Test Product",
+            cost_price=Decimal("10.00"), cost_currency_code="USD",
+            margin_percentage=Decimal("30.00"), stock_quantity=10,
+        ))
+        g.db_session.commit()
+
+    response = client.post("/api/v1/sales", json={
+        "product_id": str(target_product_id),
+        "quantity": 3,
+        "unit_price": "15.00",
+        "currency_code": "USD",
+        "comment": "Test sale",
+    })
+
+    assert response.status_code == 201
+    data = response.get_json()["data"]
+    assert data["remaining_stock"] == 7
+    assert data["transaction_type"] == "OUT"
+    assert data["quantity"] == 3
+    assert data["unit_price"] == "15.00"
+    assert data["currency_code"] == "USD"
+    assert data["comment"] == "Test sale"
+
+    # Verify stock was reduced in DB
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        updated = SqlAlchemyProductRepository(g.db_session).get_by_id(target_product_id)
+        assert updated is not None
+        assert updated.stock_quantity == 7
+
+    # Verify transaction was created in DB
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        tx_repo = SqlAlchemyTransactionRepository(g.db_session)
+        all_tx = tx_repo.get_all()
+        sale_tx = [t for t in all_tx if t.product_id == target_product_id]
+        assert len(sale_tx) == 1
+        assert sale_tx[0].transaction_type == "OUT"
+
+
+def test_sales_insufficient_stock(client: FlaskClient, seed_admin_password: None) -> None:
+    """Sale with quantity > stock must return 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    target_product_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        prod_repo = SqlAlchemyProductRepository(g.db_session)
+        prod_repo.save(Product(
+            id=target_product_id, name="Low Stock Product",
+            cost_price=Decimal("10.00"), cost_currency_code="USD",
+            margin_percentage=Decimal("30.00"), stock_quantity=2,
+        ))
+        g.db_session.commit()
+
+    response = client.post("/api/v1/sales", json={
+        "product_id": str(target_product_id),
+        "quantity": 10,
+        "unit_price": "15.00",
+        "currency_code": "USD",
+    })
+
+    assert response.status_code == 400
+    assert "Insufficient stock" in response.get_json()["error"]
+
+
+def test_sales_product_not_found(client: FlaskClient, seed_admin_password: None) -> None:
+    """Sale with non-existent product must return 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.post("/api/v1/sales", json={
+        "product_id": str(uuid4()),
+        "quantity": 1,
+        "unit_price": "10.00",
+        "currency_code": "USD",
+    })
+
+    assert response.status_code == 400
+    assert "not found" in response.get_json()["error"]
+
+
+def test_sales_missing_payload(client: FlaskClient, seed_admin_password: None) -> None:
+    """Empty payload must return 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.post("/api/v1/sales", json={})
+    assert response.status_code == 400
+
+
+def test_sales_missing_field(client: FlaskClient, seed_admin_password: None) -> None:
+    """Missing required field must return 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.post("/api/v1/sales", json={
+        "product_id": str(uuid4()),
+        "quantity": 1,
+    })
+    assert response.status_code == 400
+    assert "Missing required field" in response.get_json()["error"]
 
 
 def test_get_chronological_transactions(client: FlaskClient, seed_admin_password: None) -> None:

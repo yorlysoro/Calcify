@@ -54,14 +54,12 @@ def run_migrations(app_name: str = "Calcify") -> None:
     """
     try:
         # 1. Resolve Absolute Paths safely
-        # __file__ points to infrastructure/database/migrations.py
-        current_file: Path = Path(__file__).resolve()
+        # Artifacts live alongside the database in the AppData directory.
+        db_path: Path = get_db_path(app_name)
+        data_dir: Path = db_path.parent
         
-        # project_root resolves to the root folder of the repository
-        project_root: Path = current_file.parent.parent.parent
-        
-        alembic_ini_path: Path = project_root / "alembic.ini"
-        migrations_dir: Path = project_root / "migrations" # or "alembic" depending on your setup
+        alembic_ini_path: Path = data_dir / "alembic.ini"
+        migrations_dir: Path = data_dir / "migrations"
         
         if not alembic_ini_path.exists():
             raise FileNotFoundError(f"Alembic configuration not found at {alembic_ini_path}")
@@ -75,7 +73,7 @@ def run_migrations(app_name: str = "Calcify") -> None:
         alembic_cfg.set_main_option("script_location", str(migrations_dir))
         
         # 3. Dynamic Database Path Injection
-        db_path: Path = get_db_path(app_name)
+        # (db_path already resolved above)
         
         # Use .as_posix() to ensure Windows backslashes (\) are converted to forward 
         # slashes (/) to maintain a valid SQLAlchemy URI standard.

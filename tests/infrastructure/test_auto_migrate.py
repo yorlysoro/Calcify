@@ -13,13 +13,14 @@ from infrastructure.database.models import Base
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
 
 
-def _clean_alembic_artifacts() -> None:
-    alembic_ini = PROJECT_ROOT / "alembic.ini"
-    migrations = PROJECT_ROOT / "migrations"
-    if alembic_ini.exists():
-        alembic_ini.unlink()
-    if migrations.exists():
-        shutil.rmtree(str(migrations), ignore_errors=True)
+def _clean_alembic_artifacts(root: Path = PROJECT_ROOT) -> None:
+    for name in ("alembic.ini", "migrations", "schema_trace.sql"):
+        p = root / name
+        if p.exists():
+            if p.is_dir():
+                shutil.rmtree(str(p), ignore_errors=True)
+            else:
+                p.unlink()
 
 
 def _remove_test_col() -> None:
@@ -33,15 +34,35 @@ def _remove_test_col() -> None:
 def isolated_env() -> str:
     _clean_alembic_artifacts()
     with tempfile.TemporaryDirectory() as tmpdir:
-        old_cwd = os.getcwd()
-        os.chdir(tmpdir)
-        db_url = f"sqlite:///{tmpdir}/test.db"
+        old_xdg = os.environ.get("XDG_CONFIG_HOME")
+        os.environ["XDG_CONFIG_HOME"] = tmpdir
+        db_file = Path(tmpdir) / "Calcify" / "database.sqlite"
+        db_url: str = f"sqlite:///{db_file}"
         yield db_url
-        os.chdir(old_cwd)
+        if old_xdg is None:
+            del os.environ["XDG_CONFIG_HOME"]
+        else:
+            os.environ["XDG_CONFIG_HOME"] = old_xdg
     _clean_alembic_artifacts()
 
 
-def test_1_initial_schema(isolated_env: str) -> None:
+def test_1_artifacts_in_data_dir(isolated_env: str) -> None:
+    """Verify alembic artifacts live alongside the DB, not in project root."""
+    db_url: str = isolated_env
+    assert bootstrap_migrations(db_url, Base.metadata)
+
+    tmpdir = os.environ["XDG_CONFIG_HOME"]
+    data_dir = Path(tmpdir) / "Calcify"
+
+    assert (data_dir / "alembic.ini").exists()
+    assert (data_dir / "migrations").exists()
+    assert (data_dir / "migrations" / "env.py").exists()
+    assert (data_dir / "migrations" / "versions").exists()
+    assert not (PROJECT_ROOT / "alembic.ini").exists()
+    assert not (PROJECT_ROOT / "migrations").exists()
+
+
+def test_2_initial_schema(isolated_env: str) -> None:
     db_url: str = isolated_env
     assert bootstrap_migrations(db_url, Base.metadata)
 
@@ -55,7 +76,7 @@ def test_1_initial_schema(isolated_env: str) -> None:
     assert "configurations" in tables
 
 
-def test_2_add_field(isolated_env: str) -> None:
+def test_3_add_field(isolated_env: str) -> None:
     db_url: str = isolated_env
     products_table = Base.metadata.tables["products"]
     products_table.append_column(Column("test_col", String))
@@ -68,7 +89,7 @@ def test_2_add_field(isolated_env: str) -> None:
     assert "test_col" in columns
 
 
-def test_3_drop_field(isolated_env: str) -> None:
+def test_4_drop_field(isolated_env: str) -> None:
     db_url: str = isolated_env
     products_table = Base.metadata.tables["products"]
     col = products_table.c["test_col"]
@@ -82,7 +103,7 @@ def test_3_drop_field(isolated_env: str) -> None:
     assert "test_col" not in columns
 
 
-def test_4_replace_field(isolated_env: str) -> None:
+def test_5_replace_field(isolated_env: str) -> None:
     db_url: str = isolated_env
     products_table = Base.metadata.tables["products"]
     products_table.append_column(Column("test_col", String))
@@ -103,11 +124,7 @@ def test_4_replace_field(isolated_env: str) -> None:
     _remove_test_col()
 
 
-def test_5_currency_rates_add_inverse_rate(isolated_env: str) -> None:
-    """
-    Removes inverse_rate from metadata + DB, re-adds it with server_default,
-    and verifies Alembic auto-migration adds the column back.
-    """
+def test_6_currency_rates_inverse(isolated_env: str) -> None:
     from sqlalchemy import Table
 
     db_url: str = isolated_env
@@ -139,3 +156,86 @@ def test_5_currency_rates_add_inverse_rate(isolated_env: str) -> None:
 
     rates_table._columns.remove(rates_table.c["inverse_rate"])
     rates_table.append_column(inverse_col)
+
+
+def test_7_no_alembic_version_stamped(isolated_env: str) -> None:
+    """Bug 1 regression: create_all before bootstrap must still produce alembic_version."""
+    db_url: str = isolated_env
+
+    engine = create_engine(db_url)
+    Base.metadata.create_all(bind=engine)
+    engine.dispose()
+
+    assert bootstrap_migrations(db_url, Base.metadata)
+
+    engine2 = create_engine(db_url)
+    inspector = inspect(engine2)
+    assert "alembic_version" in inspector.get_table_names()
+    engine2.dispose()
+
+    products_table = Base.metadata.tables["products"]
+    products_table.append_column(Column("test_col", String))
+
+    assert bootstrap_migrations(db_url, Base.metadata)
+
+    engine3 = create_engine(db_url)
+    inspector3 = inspect(engine3)
+    columns = [c["name"] for c in inspector3.get_columns("products")]
+    assert "test_col" in columns
+    engine3.dispose()
+
+    _remove_test_col()
+
+
+def test_8_cwd_independent(isolated_env: str) -> None:
+    """Bug 2 regression: migration must work when CWD is NOT the project root."""
+    db_url: str = isolated_env
+    assert bootstrap_migrations(db_url, Base.metadata)
+
+    old_cwd: str = os.getcwd()
+    os.chdir("/tmp")
+    try:
+        products_table = Base.metadata.tables["products"]
+        products_table.append_column(Column("test_col", String))
+
+        assert bootstrap_migrations(db_url, Base.metadata)
+
+        engine = create_engine(db_url)
+        inspector = inspect(engine)
+        columns = [c["name"] for c in inspector.get_columns("products")]
+        assert "test_col" in columns
+    finally:
+        os.chdir(old_cwd)
+
+    _remove_test_col()
+
+
+def test_9_legacy_artifacts_migrated(isolated_env: str) -> None:
+    """Legacy artifacts in project root are auto-migrated to data dir."""
+    db_url: str = isolated_env
+
+    # Step 1: Bootstrap normally (creates matching migration history + stamps DB)
+    assert bootstrap_migrations(db_url, Base.metadata)
+
+    # Step 2: Copy proper artifacts to project root (simulate legacy location)
+    tmpdir = os.environ["XDG_CONFIG_HOME"]
+    data_dir = Path(tmpdir) / "Calcify"
+
+    legacy_ini: Path = PROJECT_ROOT / "alembic.ini"
+    legacy_migrations: Path = PROJECT_ROOT / "migrations"
+    try:
+        shutil.copytree(str(data_dir / "migrations"), str(legacy_migrations))
+        shutil.copy(str(data_dir / "alembic.ini"), str(legacy_ini))
+
+        # Step 3: Remove from data_dir so bootstrap detects them as legacy
+        shutil.rmtree(str(data_dir / "migrations"))
+        (data_dir / "alembic.ini").unlink()
+
+        # Step 4: Bootstrap again — should move artifacts from project root
+        assert bootstrap_migrations(db_url, Base.metadata)
+
+        # Step 5: Verify artifacts ended up in data_dir, legacy is gone
+        assert (data_dir / "alembic.ini").exists(), f"alembic.ini not in {data_dir}"
+        assert not legacy_ini.exists(), f"legacy alembic.ini still at {legacy_ini}"
+    finally:
+        _clean_alembic_artifacts()
