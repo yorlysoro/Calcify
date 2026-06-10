@@ -27,6 +27,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import os
+import sys
 import logging
 import traceback
 from typing import Optional
@@ -98,40 +100,49 @@ def create_app(config_name: Optional[str] = None) -> Flask:
     SessionLocal = sessionmaker(bind=engine)
 
     # 3. Application Context Initialization
-    with app.app_context():
-        if config_name == "testing":
-            # Bypass Alembic for tests: build schema directly in RAM (O(1) time)
-            Base.metadata.create_all(engine)
-            with SessionLocal() as test_session:
-                test_session.add(
-                    ConfigModel(key="app_secret_key", value="test_secret_123")
-                )
-                test_session.commit()
-        else:
-            # Auto-migrations: bootstraps Alembic, generates, and applies schema updates
-            # MUST run before initialize_security so Alembic tracks the schema.
-            try:
+    try:
+        with app.app_context():
+            if config_name == "testing":
+                # Bypass Alembic for tests: build schema directly in RAM (O(1) time)
+                Base.metadata.create_all(engine)
+                with SessionLocal() as test_session:
+                    test_session.add(
+                        ConfigModel(key="app_secret_key", value="test_secret_123")
+                    )
+                    test_session.commit()
+            else:
+                # Auto-migrations: bootstraps Alembic, generates, and applies schema updates
+                # MUST run before initialize_security so Alembic tracks the schema.
+                logger.info("Starting migration bootstrap...")
                 bootstrap_migrations(str(engine.url), Base.metadata)
-            except Exception as e:
-                logger.critical(
-                    f"Application boot aborted. Migration failed: {str(e)}"
-                )
-                raise SystemExit(1)
+                logger.info("Migration bootstrap completed.")
 
-            # Idempotent Security Bootstrap (Prevents locking out active sessions)
-            initialize_security("Calcify")
+                # Idempotent Security Bootstrap (Prevents locking out active sessions)
+                logger.info("Starting security setup...")
+                initialize_security("Calcify", engine=engine)
+                logger.info("Security setup completed.")
 
-        # Dynamically inject the cryptographic App Secret Key into Flask
-        with SessionLocal() as temp_session:
-            repo = SqlAlchemyConfigRepository(temp_session)
-            secret_key: Optional[str] = repo.get_value("app_secret_key")
+            # Dynamically inject the cryptographic App Secret Key into Flask
+            with SessionLocal() as temp_session:
+                repo = SqlAlchemyConfigRepository(temp_session)
+                secret_key: Optional[str] = repo.get_value("app_secret_key")
 
-            if not secret_key:
-                raise RuntimeError(
-                    "App Secret Key is missing from the database. Initialization failed."
-                )
+                if not secret_key:
+                    raise RuntimeError(
+                        "App Secret Key is missing from the database. Initialization failed."
+                    )
 
-            app.secret_key = secret_key
+                app.secret_key = secret_key
+                logger.info("App secret key loaded successfully.")
+    except SystemExit:
+        raise
+    except Exception as boot_err:
+        msg: str = f"Application boot aborted: {type(boot_err).__name__}: {boot_err}"
+        logger.critical(msg)
+        print(f"\n*** {msg} ***", file=sys.stderr, flush=True)
+        traceback.print_exc()
+        print("*** Application will now exit ***", file=sys.stderr, flush=True)
+        raise SystemExit(1)
 
     # 4. Request Lifecycle Middlewares
     @app.before_request
@@ -177,5 +188,18 @@ if __name__ == "__main__":
     # Local development server entrypoint
     application: Flask = create_app()
 
-    # Binding to 0.0.0.0 exposes the server to the Local Area Network (LAN)
-    application.run(host="0.0.0.0", port=5000, debug=True)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    print("=== APP CREATED, STARTING SERVER ===", flush=True)
+
+    # 127.0.0.1 avoids Windows firewall prompts and port-binding issues with 0.0.0.0
+    # Override via FLASK_RUN_HOST env var (e.g. "0.0.0.0" for LAN access)
+    debug_mode: bool = os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes")
+    application.run(
+        host=os.environ.get("FLASK_RUN_HOST", "127.0.0.1"),
+        port=5000,
+        debug=debug_mode,
+    )
+
+    sys.stdout.flush()
+    print("=== SERVER STOPPED (UNEXPECTED) ===", flush=True)

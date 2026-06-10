@@ -40,12 +40,10 @@ from infrastructure.database.models import Base, ConfigModel
 from infrastructure.database.session import get_db_path
 from infrastructure.repositories.sqlalchemy_repos import SqlAlchemyConfigRepository
 
-# Configure basic logger for the setup script
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-def initialize_security(app_name: str = "Calcify") -> None:
+def initialize_security(app_name: str = "Calcify", engine: Optional[Engine] = None) -> None:
     """
     Bootstraps the initial security constraints for the application.
 
@@ -55,11 +53,15 @@ def initialize_security(app_name: str = "Calcify") -> None:
 
     Args:
         app_name (str): The namespace used to locate the database path.
+        engine (Optional[Engine]): Reuse an existing SQLAlchemy engine.
+            When None, creates a new engine and disposes it after use.
     """
     # 1. Resolve DB Path and Initialize Engine
     # We use .as_posix() to prevent URI parsing errors on Windows
-    db_uri: str = f"sqlite:///{get_db_path(app_name).as_posix()}"
-    engine: Engine = create_engine(db_uri)
+    _owns_engine: bool = engine is None
+    if engine is None:
+        db_uri: str = f"sqlite:///{get_db_path(app_name).as_posix()}"
+        engine = create_engine(db_uri)
 
     # 2. Ensure all tables exist before operating on them
     Base.metadata.create_all(bind=engine)
@@ -78,7 +80,11 @@ def initialize_security(app_name: str = "Calcify") -> None:
             print("(Leave blank to use the default 'admin123')")
 
             # getpass securely prompts without echoing keystrokes to the terminal
-            raw_password: str = getpass.getpass(prompt="Enter new Admin PIN: ").strip()
+            try:
+                raw_password: str = getpass.getpass(prompt="Enter new Admin PIN: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                logger.critical("Cannot read password from console. Using default 'admin123'.")
+                raw_password = "admin123"
 
             if not raw_password:
                 raw_password = "admin123"
@@ -114,8 +120,13 @@ def initialize_security(app_name: str = "Calcify") -> None:
         session.commit()
         logger.info("Security setup completed successfully.\n")
 
+    # 4. Dispose engine only if we created it (avoids closing caller's engine)
+    if _owns_engine:
+        engine.dispose()
+
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     try:
         initialize_security()
     except Exception as e:

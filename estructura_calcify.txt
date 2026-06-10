@@ -1,0 +1,329 @@
+# Calcify — Reporte de Estado del Proyecto
+
+## 1. Resumen General
+
+Calcify es una aplicación de escritorio para gestión de inventario y
+divisas (currency/inventory management) construida con Flask 3 +
+SQLAlchemy 2.0 bajo Clean Architecture (4 capas estrictas).
+
+- **Versión actual:** 0.7.0 (en desarrollo activo)
+- **Python:** 3.13+
+- **Framework web:** Flask 3.1.3
+- **ORM:** SQLAlchemy 2.0.49
+- **Base de datos:** SQLite (con migraciones automáticas vía Alembic 1.18.4)
+- **Tests:** Pytest 9.0.3 (108 tests)
+- **Cobertura:** 80% (892/1110 statements)
+
+## 2. Estructura de Directorios
+
+```
+Calcify/
+├── app.py                          # Application Factory
+├── run_coverage.py                 # Script de cobertura (cross-platform)
+├── setup_security.py               # Bootstrap de seguridad (admin PIN + secret key)
+├── reset_password.py               # CLI interactivo para reset de PIN
+├── scaffold.py                     # Generador de estructura inicial
+├── requirements.txt                # Dependencias (20 paquetes)
+├── AGENTS.md                       # Guía de arquitectura para asistentes IA
+├── changelog.md                    # Historial de cambios (Keep a Changelog)
+├── domain/                         # CAPA 1: Domain (0 dependencias externas)
+│   ├── models.py                   #   Entidades: Currency, ExchangeRate, Product,
+│   │                               #              CurrencyRate, Transaction
+│   ├── exceptions.py               #   InvalidExchangeRateError
+│   └── services/
+│       ├── __init__.py             #   CurrencyConverter (legacy, con ExchangeRate)
+│       └── currency_converter.py   #   CurrencyConverter.convert() (inverse-rate)
+├── use_cases/                      # CAPA 2: Use Cases (solo interfaces abstractas)
+│   ├── sales.py                    #   RegisterSaleUseCase
+│   ├── currency_conversion.py      #   CurrencyConversionUseCase
+│   └── export_backup.py            #   ExportBackupUseCase
+├── infrastructure/                 # CAPA 3: Infrastructure (SQLAlchemy, Alembic)
+│   ├── database/
+│   │   ├── models.py               #   ORM models (5 tablas)
+│   │   ├── session.py              #   get_db_path() — path OS-agnóstico
+│   │   ├── auto_migrate.py         #   bootstrap_migrations() — migración automática
+│   │   └── migrations.py           #   run_migrations() — CLI alternativo
+│   └── repositories/
+│       ├── interfaces.py           #   5 interfaces abstractas (ABC)
+│       └── sqlalchemy_repos.py     #   Implementaciones concretas con mapeo a dominio
+├── presentation/                   # CAPA 4: Presentation (Flask Blueprints)
+│   ├── api/
+│   │   ├── auth.py                 #   auth_bp: /login, /logout, @login_required
+│   │   └── routes.py               #   api_bp: 16 endpoints REST
+│   ├── web/
+│   │   └── routes.py               #   web_bp: / (index), /login (GET)
+│   └── templates/
+│       ├── index.html              #   SPA (Tailwind CSS)
+│       └── login.html              #   Login con tema cyberpunk
+├── tests/                          # 108 tests de integración y unitarios
+│   ├── conftest.py                 #   Fixtures: db_engine, db_session, client
+│   ├── domain/
+│   │   ├── test_models.py          #   1 test (Product entity)
+│   │   └── test_currency_converter.py  # 12 tests (CurrencyConverter)
+│   ├── use_cases/
+│   │   ├── test_sales.py           #   9 tests (RegisterSaleUseCase)
+│   │   └── test_currency_conversion.py # 10 tests (CurrencyConversionUseCase)
+│   ├── infrastructure/
+│   │   ├── test_auto_migrate.py    #   9 tests (bootstrap_migrations)
+│   │   ├── test_repositories.py    #   3 tests (repositorios)
+│   │   ├── test_config_repository.py # 3 tests (config repo)
+│   │   └── test_transaction_repository.py # 3 tests (transaction repo)
+│   ├── presentation/
+│   │   └── test_routes.py          #   51 tests (endpoints API)
+│   ├── test_currency_converter.py  #   5 tests (legacy converter)
+│   └── test_product.py             #   4 tests (Product domain)
+├── iniciar_debian.sh               # Launcher Linux
+└── instalar_y_correr.bat           # Launcher Windows
+```
+
+## 3. Capas de Arquitectura (Clean Architecture)
+
+Reglas estrictas de dependencia (una vía, de afuera hacia adentro):
+
+| Capa | Depende de | Imports prohibidos |
+|------|-----------|-------------------|
+| `domain/` | Python stdlib | Flask, SQLAlchemy, cualquier framework |
+| `use_cases/` | Entidades domain + interfaces abstractas | ORM models, Flask |
+| `infrastructure/` | SQLAlchemy, entidades domain, interfaces | Flask globals (request, g, session) |
+| `presentation/` | Flask, entidades domain, repos concretos | ORM models directamente |
+
+## 4. Entidades del Dominio (domain/models.py)
+
+### Currency
+- code: str (PK, ISO 4217, ej. "USD")
+- name: str
+- symbol: str
+- is_main: bool
+
+### ExchangeRate (legacy)
+- base_currency_code: str
+- target_currency_code: str
+- rate: Decimal
+- date: datetime
+
+### Product
+- id: UUID (PK)
+- name: str
+- cost_price: Decimal
+- cost_currency_code: str (FK → currencies.code)
+- margin_percentage: Decimal
+- category: str = "Uncategorized"
+- stock_quantity: int = 0
+- calculate_sale_price() → Decimal (cost_price * (1 + margin/100))
+- get_sale_price_in_currency(...) → Decimal (convierte a otra moneda)
+
+### CurrencyRate
+- id: UUID (PK)
+- currency_code: str
+- rate: Decimal
+- inverse_rate: Decimal = 0.0
+- created_at: datetime (timezone-aware)
+
+### Transaction
+- id: UUID (PK)
+- product_id: UUID (FK → products.id)
+- transaction_type: str ("IN" | "OUT")
+- quantity: int
+- unit_price: Decimal
+- currency_code: str
+- created_at: datetime (timezone-aware)
+- comment: str = ""
+
+## 5. Servicios del Dominio (domain/services/currency_converter.py)
+
+### CurrencyConverter.convert(amount, source_inverse, target_inverse) → Decimal
+- Fórmula: (amount * target_inverse) / source_inverse
+- Quantize a 4 decimales con ROUND_HALF_UP
+- Lanza InvalidExchangeRateError si algún inverse_rate es 0
+
+## 6. Casos de Uso (use_cases/)
+
+| Use Case | Método | Descripción |
+|----------|--------|-------------|
+| RegisterSaleUseCase | execute(product_id, quantity, unit_price, currency_code, comment) | Valida stock > quantity, crea Transaction OUT, reduce stock, retorna SaleResult |
+| CurrencyConversionUseCase | execute(source_code, target_code, amount) | Convierte moneda a través de la moneda base usando inverse_rates |
+| ExportBackupUseCase | execute() | Exporta todos los datos (currencies, products, transactions) como dict serializable |
+
+## 7. API REST (presentation/api/routes.py) — 16 endpoints
+
+| Método | Ruta | Función | Propósito |
+|--------|------|---------|-----------|
+| GET | /api/v1/currencies | get_currencies | Lista todas las monedas |
+| POST | /api/v1/currencies | create_currency | Crea moneda (detecta duplicados → 409) |
+| POST | /api/v1/products | create_product | Crea producto con validación |
+| GET | /api/v1/products/<id> | get_product | Obtiene producto por ID con precio calculado |
+| PUT | /api/v1/products/<id> | update_product | Actualiza campos parciales del producto |
+| GET | /api/v1/products | get_products | Lista todos los productos |
+| POST | /api/v1/transactions | create_transaction | Crea transacción IN/OUT |
+| GET | /api/v1/transactions | get_transactions | Lista transacciones (filtro ?date=YYYY-MM-DD) |
+| POST | /api/v1/rates | create_currency_rate | Crea tasa de cambio |
+| GET | /api/v1/rates/latest | get_latest_rates | Última tasa por moneda |
+| DELETE | /api/v1/rates/<id> | delete_currency_rate | Elimina tasa por ID |
+| POST | /api/v1/convert | convert_currency | Convierte monto entre monedas |
+| POST | /api/v1/sales | register_sale | Registra venta (reduce stock + crea OUT) |
+| PUT | /api/v1/currencies/<code>/set_main | set_main_currency | Designa moneda base |
+| DELETE | /api/v1/products/<id> | delete_product | Elimina producto |
+| GET | /api/v1/backup/export | export_backup | Exporta backup como JSON (descarga) |
+
+## 8. Autenticación (presentation/api/auth.py)
+
+- POST /login — espera {"pin": "..."}, verifica contra hash en DB
+- POST /logout — limpia sesión
+- @login_required — decorator que retorna 401 (API) o redirect (web)
+- Session-based auth (no JWT)
+- Session fixation prevention: session.clear() antes de login exitoso
+- CSRF no implementado (app de escritorio single-user)
+
+## 9. Base de Datos (5 tablas SQLite)
+
+| Tabla | Columnas clave |
+|-------|---------------|
+| currencies | code (PK String(3)), name, symbol, is_main |
+| products | id (PK UUID), name, cost_price (Numeric(14,2)), cost_currency_code (FK), margin_percentage (Numeric(5,2)), stock_quantity, category |
+| transactions | id (PK UUID), product_id (FK), transaction_type (String(3)), quantity, unit_price (Numeric(14,2)), currency_code, comment, created_at |
+| currency_rates | id (PK UUID), currency_code, rate (Numeric(14,6)), inverse_rate (Numeric(24,12)), created_at |
+| configurations | key (PK String(100)), value (Text), updated_at |
+| alembic_version | version_num (PK) — gestión automática |
+
+## 10. Migraciones Automáticas (infrastructure/database/auto_migrate.py)
+
+bootstrap_migrations(db_url, metadata) ejecuta en cada boot:
+
+1. Migra artefactos legacy (alembic.ini, migrations/, schema_trace.sql)
+   del project root al AppData dir
+2. Inicializa Alembic (alembic.ini + migrations/) si no existen
+3. Parchea env.py con sys.path, target_metadata, render_as_batch
+4. Detecta estado de la DB: fresh, tables_exist_no_tracking, o normal
+5. ALTER TABLE repair para columnas faltantes
+6. Detecta diferencias de schema (tipos, columnas faltantes/sobrantes)
+7. Ejecuta comandos Alembic según el estado:
+   - Fresh DB → revision(autogenerate=True) + upgrade
+   - Sin tracking → revision(no autogenerate) + stamp
+   - Diferencias no-aditivas → revision(autogenerate=True) + upgrade
+   - Normal → upgrade("head")
+8. Maneja CommandError: "No changes" (log), "Can't locate revision"
+   (DROP alembic_version + nueva baseline + stamp), otros (re-raise)
+9. Genera schema_trace.sql (DDL offline dump)
+
+## 11. Patrones de Diseño Implementados
+
+| # | Patrón | Ubicación |
+|---|--------|-----------|
+| 1 | Clean Architecture (4 capas) | Toda la estructura de paquetes |
+| 2 | Application Factory | app.py → create_app(config_name) |
+| 3 | Repository | interfaces.py (abstracto) → sqlalchemy_repos.py (concreto) |
+| 4 | Dependency Injection | Repos inyectan Session; Use Cases inyectan interfaces de repo |
+| 5 | Unit of Work | antes_request inyecta g.db_session; routes llaman commit(); teardown cierra |
+| 6 | Decorator (Auth) | @login_required en presentation/api/auth.py |
+| 7 | Adapter (ORM→Domain) | sqlalchemy_repos._map_to_domain() |
+| 8 | Strategy (Migration) | auto_migrate (bootstrap) vs migrations (CLI alternativo) |
+| 9 | Use Case / Interactor | 3 use cases con método execute() |
+| 10 | Domain Service (Stateless) | CurrencyConverter.convert() |
+| 11 | SAVEPOINT Test Isolation | conftest.py — transacciones anidadas |
+| 12 | Factory Method (Session) | Fixture db_engine con StaticPool |
+| 13 | Upsert (Merge) | session.merge() para currencies y config |
+| 14 | Lookup-Then-Update | Productos y transacciones: query + update explícito |
+
+## 12. Tests (108 tests)
+
+### Fixtures (conftest.py)
+- db_engine (session scope): SQLite in-memory con StaticPool
+- db_session (function scope): SAVEPOINTs para aislamiento total
+- client (function scope): create_app("testing") + test client
+
+### Distribución
+
+| Archivo | Tests | Cobertura que aporta |
+|---------|-------|---------------------|
+| tests/domain/test_currency_converter.py | 12 | domain/services/ (100%) |
+| tests/domain/test_models.py | 1 | domain/models.py (91%) |
+| tests/use_cases/test_sales.py | 9 | use_cases/sales.py (100%) |
+| tests/use_cases/test_currency_conversion.py | 10 | use_cases/currency_conversion.py (95%) |
+| tests/infrastructure/test_auto_migrate.py | 9 | auto_migrate.py (81%) |
+| tests/infrastructure/test_repositories.py | 3 | sqlalchemy_repos.py (93%) |
+| tests/infrastructure/test_config_repository.py | 3 | config repo (100%) |
+| tests/infrastructure/test_transaction_repository.py | 3 | transaction repo (implícito) |
+| tests/presentation/test_routes.py | 51 | routes.py (76%), auth.py (86%) |
+| tests/test_currency_converter.py | 5 | legacy converter (100%) |
+| tests/test_product.py | 4 | domain/models.py (91%) |
+
+### Cobertura por archivo (80% total)
+
+| Archivo | Statements | Cobertura |
+|---------|-----------|-----------|
+| app.py | 92 | 64% |
+| domain/__init__.py | 0 | 100% |
+| domain/exceptions.py | 2 | 100% |
+| domain/models.py | 67 | 91% |
+| domain/services/__init__.py | 21 | 86% |
+| domain/services/currency_converter.py | 11 | 100% |
+| infrastructure/database/__init__.py | 0 | 100% |
+| infrastructure/database/auto_migrate.py | 155 | 81% |
+| infrastructure/database/migrations.py | 28 | 29% |
+| infrastructure/database/models.py | 44 | 100% |
+| infrastructure/database/session.py | 20 | 70% |
+| infrastructure/repositories/__init__.py | 0 | 100% |
+| infrastructure/repositories/interfaces.py | 63 | 71% |
+| infrastructure/repositories/sqlalchemy_repos.py | 118 | 93% |
+| presentation/api/__init__.py | 0 | 100% |
+| presentation/api/auth.py | 44 | 86% |
+| presentation/api/routes.py | 344 | 76% |
+| presentation/web/__init__.py | 0 | 100% |
+| presentation/web/routes.py | 10 | 80% |
+| use_cases/__init__.py | 0 | 100% |
+| use_cases/currency_conversion.py | 41 | 95% |
+| use_cases/export_backup.py | 22 | 100% |
+| use_cases/sales.py | 28 | 100% |
+| **TOTAL** | **1110** | **80%** |
+
+### Cómo ejecutar
+
+```bash
+# Tests
+python -m pytest
+
+# Tests + cobertura
+python run_coverage.py
+# Equivalente directo:
+python -m pytest --cov=domain --cov=use_cases --cov=infrastructure \
+       --cov=presentation --cov=app --cov-report=term --cov-report=html tests/
+```
+
+## 13. Dependencias (requirements.txt)
+
+alembic==1.18.4, blinker==1.9.0, bottle==0.13.4, click==8.4.1,
+Flask==3.1.3, greenlet==3.5.1, iniconfig==2.3.0, itsdangerous==2.2.0,
+Jinja2==3.1.6, Mako==1.3.12, MarkupSafe==3.0.3, packaging==26.2,
+pluggy==1.6.0, proxy_tools==0.1.0, Pygments==2.20.0, pytest==9.0.3,
+pytest-cov==6.1.1, pywebview==6.2.1, SQLAlchemy==2.0.49,
+typing_extensions==4.15.0, Werkzeug==3.1.8
+
+## 14. Plataformas Soportadas
+
+- Linux: iniciar_debian.sh (verifica Python/venv, instala deps, resuelve IP LAN)
+- Windows: instalar_y_correr.bat (auto-instala Python si falta, elevación admin,
+  lanzamiento automático de navegador)
+- macOS: no tiene launcher dedicado pero funciona con python app.py
+
+## 15. Estado del Proyecto (2026-06-09)
+
+### Funcionalidades completadas
+- [x] CRUD completo de productos, monedas, tasas de cambio y transacciones
+- [x] Conversión de divisas con precisión decimal (ROUND_HALF_UP)
+- [x] Registro de ventas con validación de stock
+- [x] Autenticación por PIN con hash (Werkzeug)
+- [x] Migraciones automáticas de esquema (Alembic + ALTER TABLE fallback)
+- [x] Exportación de backup JSON
+- [x] Reporte de cobertura (80%) con pytest-cov
+- [x] Recuperación de revisiones huérfanas de Alembic (Can't locate revision)
+- [x] Paths OS-agnósticos (Windows %APPDATA%, Linux ~/.config, macOS ~/Library)
+- [x] Filtro por fecha en transacciones
+- [x] SPA con Tailwind CSS (gestión, calculadora, reportes, ventas)
+
+### Pendientes / Áreas con baja cobertura
+- [ ] app.py (64%) — paths de producción no probados (create_engine real, seguridad,
+      error handlers globales, bloque __main__)
+- [ ] migrations.py (29%) — run_migrations() no se llama en tests (usa auto_migrate)
+- [ ] session.py (70%) — paths de Windows/macOS no probados en CI Linux
+- [ ] routes.py (76%) — algunos handlers de error 500 no ejercitados
+- [ ] interfaces.py (71%) — statements "pass" en métodos abstractos (inherente)

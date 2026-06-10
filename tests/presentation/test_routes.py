@@ -873,3 +873,263 @@ def test_get_transactions_with_date_filter(client: FlaskClient, seed_admin_passw
     returned_tx = data[0]
     assert returned_tx["transaction_type"] == "IN"
     assert returned_tx["created_at"].startswith(today_date_str)
+
+
+def test_get_product_by_id_success(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """GET /api/v1/products/<id> returns 200 with serialized data."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    target_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyProductRepository(g.db_session)
+        repo.save(Product(
+            id=target_id, name="Test Product", category="Hardware",
+            cost_price=Decimal("50.00"), cost_currency_code="USD",
+            margin_percentage=Decimal("20.00"), stock_quantity=10,
+        ))
+        g.db_session.commit()
+
+    response = client.get(f"/api/v1/products/{target_id}")
+    assert response.status_code == 200
+    data = response.get_json()["data"]
+    assert data["id"] == str(target_id)
+    assert data["name"] == "Test Product"
+    assert data["category"] == "Hardware"
+    assert data["cost_price"] == "50.00"
+    assert data["cost_currency_code"] == "USD"
+    assert data["margin_percentage"] == "20.00"
+    assert data["stock_quantity"] == 10
+    assert isinstance(data["calculated_sale_price"], str)
+
+
+def test_get_product_by_id_not_found(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """GET non-existent product returns 404."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.get(f"/api/v1/products/{uuid4()}")
+    assert response.status_code == 404
+    assert "error" in response.get_json()
+
+
+def test_get_product_by_id_invalid_uuid(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """GET with invalid UUID format returns 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.get("/api/v1/products/not-a-uuid")
+    assert response.status_code == 400
+    assert (
+        response.get_json()["error"]
+        == "Invalid product ID format. Must be a valid UUID."
+    )
+
+
+def test_delete_currency_rate_success(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """DELETE /api/v1/rates/<id> returns 200 and removes the record."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    target_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyCurrencyRateRepository(g.db_session)
+        repo.save(CurrencyRate(
+            id=target_id, currency_code="EUR", rate=Decimal("1.05"),
+            created_at=datetime.now(timezone.utc),
+        ))
+        g.db_session.commit()
+
+    response = client.delete(f"/api/v1/rates/{target_id}")
+    assert response.status_code == 200
+    assert response.get_json()["message"] == "Rate deleted successfully."
+
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        check = SqlAlchemyCurrencyRateRepository(g.db_session)
+        assert check.get_latest_by_code("EUR") is None
+
+
+def test_delete_currency_rate_not_found(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """DELETE non-existent rate returns 404."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.delete(f"/api/v1/rates/{uuid4()}")
+    assert response.status_code == 404
+    assert "not found" in response.get_json()["error"]
+
+
+def test_delete_currency_rate_invalid_uuid(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """DELETE with invalid UUID format returns 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.delete("/api/v1/rates/not-a-uuid")
+    assert response.status_code == 400
+    assert (
+        response.get_json()["error"]
+        == "Invalid rate ID format. Must be a valid UUID."
+    )
+
+
+def test_logout_success(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """POST /logout clears session and returns 200."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.post("/logout")
+    assert response.status_code == 200
+    assert response.get_json()["message"] == "Logged out successfully."
+
+    with client.session_transaction() as session:
+        assert not session.get("authenticated")
+
+
+def test_login_missing_pin(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """POST /login with empty payload returns 400."""
+    response = client.post("/login", json={})
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Missing 'pin' in request payload."
+
+
+def test_create_product_missing_payload(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """POST /api/v1/products with empty JSON body returns 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.post("/api/v1/products", json={})
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Invalid or missing JSON payload."
+
+
+def test_create_product_missing_field(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """POST /api/v1/products with missing required field returns 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.post("/api/v1/products", json={"name": "No ID"})
+    assert response.status_code == 400
+    assert "Missing required field" in response.get_json()["error"]
+
+
+def test_create_product_invalid_uuid(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """POST /api/v1/products with bad UUID returns 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.post("/api/v1/products", json={
+        "id": "not-a-uuid", "name": "Bad UUID",
+        "cost_price": "10.00", "cost_currency_code": "USD",
+        "margin_percentage": "5.00",
+    })
+    assert response.status_code == 400
+    assert "Invalid UUID" in response.get_json()["error"]
+
+
+def test_create_product_invalid_decimal(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """POST /api/v1/products with non-numeric cost_price returns 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.post("/api/v1/products", json={
+        "id": str(uuid4()), "name": "Bad Decimal",
+        "cost_price": "abc", "cost_currency_code": "USD",
+        "margin_percentage": "5.00",
+    })
+    assert response.status_code == 400
+    assert "Financial values" in response.get_json()["error"]
+
+
+def test_create_currency_missing_payload(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """POST /api/v1/currencies with empty JSON body returns 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.post("/api/v1/currencies", json={})
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Invalid or missing JSON payload."
+
+
+def test_create_currency_missing_field(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """POST /api/v1/currencies with missing required field returns 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.post("/api/v1/currencies", json={"code": "XYZ"})
+    assert response.status_code == 400
+    assert "Missing required field" in response.get_json()["error"]
+
+
+def test_update_product_not_found(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """PUT /api/v1/products/<id> on non-existent product returns 404."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.put(
+        f"/api/v1/products/{uuid4()}",
+        json={"name": "Ghost"},
+    )
+    assert response.status_code == 404
+    assert "not found" in response.get_json()["error"]
+
+
+def test_update_product_invalid_uuid(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """PUT /api/v1/products/<id> with bad UUID returns 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.put(
+        "/api/v1/products/not-a-uuid",
+        json={"name": "Bad"},
+    )
+    assert response.status_code == 400
+    assert response.get_json()["error"] == (
+        "Invalid product ID format. Must be a valid UUID."
+    )
+
+
+def test_get_transactions_invalid_date(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """GET /api/v1/transactions?date=bad returns 400."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    response = client.get("/api/v1/transactions?date=not-a-date")
+    assert response.status_code == 400
+    assert "Invalid date format" in response.get_json()["error"]
