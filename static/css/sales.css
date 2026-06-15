@@ -1,0 +1,9 @@
+/* Sales form */
+.sales-message {
+  transition: opacity 0.3s;
+}
+
+/* Product search results */
+#sales-product option {
+  padding: 4px 8px;
+}

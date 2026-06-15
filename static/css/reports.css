@@ -1,0 +1,10 @@
+/* Report table */
+.report-row {
+  transition: background-color 0.2s;
+}
+
+/* Converted values column */
+.converted-values span {
+  display: block;
+  line-height: 1.5;
+}

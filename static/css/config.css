@@ -1,0 +1,16 @@
+/* Currency card hover */
+.currency-card {
+  transition: border-color 0.2s, transform 0.2s;
+}
+.currency-card:hover {
+  border-color: #10b981;
+  transform: translateY(-1px);
+}
+
+/* Rate row */
+.rate-row {
+  transition: background-color 0.2s;
+}
+.rate-row:hover {
+  background-color: rgba(24, 24, 27, 0.5);
+}

@@ -1,0 +1,13 @@
+{
+  "name": "calcify-frontend",
+  "private": true,
+  "scripts": {
+    "build:css": "npx tailwindcss -i ./static/src/input.css -o ./static/dist/tailwind.css --minify",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --config tests/frontend/jest.config.js tests/frontend/"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "tailwindcss": "^3.4.17"
+  }
+}

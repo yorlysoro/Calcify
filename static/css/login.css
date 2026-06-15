@@ -1,0 +1,21 @@
+/* Gradient bar animation */
+.gradient-bar {
+  transition: opacity 0.5s;
+}
+
+/* Shake animation for failed login */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+  20%, 40%, 60%, 80% { transform: translateX(2px); }
+}
+
+.shake {
+  animation: shake 0.3s ease-in-out;
+}
+
+/* Pulse glow for the submit button */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(0, 240, 255, 0.1); }
+  50% { box-shadow: 0 0 20px rgba(0, 240, 255, 0.3); }
+}

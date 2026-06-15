@@ -13,6 +13,9 @@ python app.py              # binds 0.0.0.0:5000
 
 Password reset: `python reset_password.py`
 
+Frontend build: `npm run build:css` (Tailwind CSS local).
+Frontend tests: `npm test` (Jest + jsdom, 78 tests).
+
 Platform launchers: `iniciar_debian.sh` (Linux), `instalar_y_correr.bat` (Windows).
 
 ## Tests
@@ -56,6 +59,16 @@ Enforced rules (also in `.agents/rules/`):
 - `domain/services.py`: `CurrencyConverter` service, `InvalidExchangeRateError`.
 - `use_cases/export_backup.py`: Injects abstract repos via DI, returns serialized dict.
 - `scaffold.py`: Generates the directory structure if missing.
+- `static/js/utils.js`: `formatMoney`, `truncate`, `escapeHtml`, `formatDate`, `getBaseCurrency`, `getInverseRate`.
+- `static/js/api-client.js`: `ApiClient` (GET/POST/PUT/DELETE) with 401 redirect and error handling.
+- `static/js/app.js`: `App.init()` — bootstrap via `Promise.all` across currencies/products/rates/transactions.
+- `static/js/calculator.js`: `CalculatorView` — multi-currency conversion calculator.
+- `static/js/inventory.js`: `InventoryView` — CRUD products with modals, stock badges, category filter.
+- `static/js/config.js`: `ConfigView` — currency/rate management, set base currency, JSON backup export.
+- `static/js/reports.js`: `ReportView` — date-filtered transaction table with converted values, CSV export.
+- `static/js/sales.js`: `SalesView` — sale registration form with product search and stock validation.
+- `static/css/base.css`: Cyberpunk theme variables, background animation, layout, scrollbar.
+- `presentation/templates/base.html`: Template base with blocks `title`, `body_class`, `content`, `scripts`, `extra_css`.
 
 ## Repo conventions
 
@@ -64,6 +77,10 @@ Enforced rules (also in `.agents/rules/`):
 - `Decimal` values serialized to strings in all JSON responses (JS float corruption prevention).
 - Route handlers instantiate repos directly from `g.db_session`: `SqlAlchemyProductRepository(session=g.db_session)`.
 - Changelog: `changelog.md`.
+- JS modules are plain scripts (no `import`/`export`) — they expose global vars (`var`) referenced via `onclick` in HTML.
+- CSS is split by view in `static/css/` (7 files), loaded from `base.html` via `{% block extra_css %}`.
+- Tailwind CSS built locally via `npm run build:css` (`static/dist/tailwind.css`).
+- Frontend tests load scripts via `(0, eval)(code)` (indirect eval) to inject global scope in Jest.
 
 ## Design & Architecture Patterns
 
@@ -93,3 +110,8 @@ Enforced rules (also in `.agents/rules/`):
 | 22 | Password Hashing (Werkzeug) | Security | `auth.py` / `setup_security.py` — `generate_password_hash` / `check_password_hash` |
 | 23 | Session Fixation Prevention | Security | `auth.py:104` — `session.clear()` before login |
 | 24 | Anti-Corruption Layer | Clean Code | `domain/models.py` — `__post_init__` validates types |
+| 25 | SPA Bootstrap (Promise.all) | Architectural | `static/js/app.js` — parallel fetch of currencies/products/rates/transactions |
+| 26 | Module-as-View (Global Var) | Structural | Each `static/js/*.js` exposes a constructor/view object via `var` |
+| 27 | Indirect Eval Test Injection | Testing | `tests/frontend/*.test.js` — `(0, eval)(code)` for global scope injection |
+| 28 | CSS-per-View | Structural | 7 files in `static/css/`, loaded selectively via `{% block extra_css %}` |
+| 29 | Defensive JS (Error States) | Behavioral | All views handle empty state, 401, network failure, NaN, null elements |

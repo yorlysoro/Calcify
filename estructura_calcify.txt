@@ -11,8 +11,10 @@ SQLAlchemy 2.0 bajo Clean Architecture (4 capas estrictas).
 - **Framework web:** Flask 3.1.3
 - **ORM:** SQLAlchemy 2.0.49
 - **Base de datos:** SQLite (con migraciones automáticas vía Alembic 1.18.4)
-- **Tests:** Pytest 9.0.3 (108 tests)
-- **Cobertura:** 80% (892/1110 statements)
+- **Backend tests:** Pytest 9.0.3 (108 tests)
+- **Frontend tests:** Jest 29 + jsdom (78 tests)
+- **CSS:** Tailwind CSS 3.4 (build local vía npm)
+- **Cobertura backend:** 80% (892/1110 statements)
 
 ## 2. Estructura de Directorios
 
@@ -26,6 +28,8 @@ Calcify/
 ├── requirements.txt                # Dependencias (20 paquetes)
 ├── AGENTS.md                       # Guía de arquitectura para asistentes IA
 ├── changelog.md                    # Historial de cambios (Keep a Changelog)
+├── package.json                    # Frontend: npm scripts (build:css, test)
+├── tailwind.config.js              # Tailwind content paths, fonts, cyber theme
 ├── domain/                         # CAPA 1: Domain (0 dependencias externas)
 │   ├── models.py                   #   Entidades: Currency, ExchangeRate, Product,
 │   │                               #              CurrencyRate, Transaction
@@ -47,15 +51,42 @@ Calcify/
 │       ├── interfaces.py           #   5 interfaces abstractas (ABC)
 │       └── sqlalchemy_repos.py     #   Implementaciones concretas con mapeo a dominio
 ├── presentation/                   # CAPA 4: Presentation (Flask Blueprints)
+│   ├── __init__.py                 #   Package marker
 │   ├── api/
 │   │   ├── auth.py                 #   auth_bp: /login, /logout, @login_required
 │   │   └── routes.py               #   api_bp: 16 endpoints REST
 │   ├── web/
+│   │   ├── __init__.py             #   Package marker
 │   │   └── routes.py               #   web_bp: / (index), /login (GET)
 │   └── templates/
-│       ├── index.html              #   SPA (Tailwind CSS)
-│       └── login.html              #   Login con tema cyberpunk
-├── tests/                          # 108 tests de integración y unitarios
+│       ├── base.html               #   Template base con bloques (title, content, scripts, extra_css)
+│       ├── index.html              #   {% extends "base.html" %} — SPA (Tailwind CSS)
+│       └── login.html              #   {% extends "base.html" %} — Login con tema cyberpunk
+├── static/                         # Frontend assets (Tailwind local build)
+│   ├── src/
+│   │   └── input.css               #   Entrada Tailwind: directivas + custom overrides
+│   ├── dist/
+│   │   └── tailwind.css            #   Build minificado de Tailwind
+│   ├── css/                        #   CSS por vista (cargados en base.html)
+│   │   ├── base.css                #     Estilos base, layout, cyber background
+│   │   ├── login.css               #     Estilos específicos del login
+│   │   ├── calculator.css          #     Estilos de la calculadora de divisas
+│   │   ├── inventory.css           #     Estilos del inventario de productos
+│   │   ├── config.css              #     Estilos de configuración (monedas, tasas)
+│   │   ├── reports.css             #     Estilos del reporte de transacciones
+│   │   └── sales.css               #     Estilos del registro de ventas
+│   └── js/                         #   JS plano (sin módulos, compatibilidad con onclick HTML)
+│       ├── utils.js                #     formatMoney, truncate, escapeHtml, formatDate, getBaseCurrency, getInverseRate
+│       ├── components.js           #     showMessage, loadingIndicator, renderCurrencySelect, refreshApp
+│       ├── api-client.js           #     ApiClient.get/post/put/delete con error handling y 401 redirect
+│       ├── app.js                  #     App: init/bootstrap con Promise.all, manejo de errores de red
+│       ├── login.js                #     LoginView: submit por PIN, loading state, feedback de error
+│       ├── calculator.js           #     CalculatorView: init con selects, render de conversiones multi-moneda
+│       ├── inventory.js            #     InventoryView: CRUD con modals, filtro por categoría, stock badges
+│       ├── config.js               #     ConfigView: gestión de monedas (base, CRUD), tasas, export backup
+│       ├── reports.js              #     ReportView: filtro por fecha, tabla con valores convertidos, export CSV
+│       └── sales.js                #     SalesView: form de venta con search de productos, validación de stock
+├── tests/                          # 108 tests backend + 78 tests frontend
 │   ├── conftest.py                 #   Fixtures: db_engine, db_session, client
 │   ├── domain/
 │   │   ├── test_models.py          #   1 test (Product entity)
@@ -71,7 +102,21 @@ Calcify/
 │   ├── presentation/
 │   │   └── test_routes.py          #   51 tests (endpoints API)
 │   ├── test_currency_converter.py  #   5 tests (legacy converter)
-│   └── test_product.py             #   4 tests (Product domain)
+│   ├── test_product.py             #   4 tests (Product domain)
+│   └── frontend/                   # Tests Jest con jsdom (78 tests)
+│       ├── jest.config.js          #   Config: jsdom, rootDir, setupFiles, moduleNameMapper (CSS mock)
+│       ├── setup.js                #   Mock de localStorage, fix de console.error
+│       ├── __mocks__/
+│       │   └── styleMock.js        #   Mock vacío para imports de CSS en tests
+│       ├── utils.test.js           #   formatMoney, truncate, escapeHtml, getInverseRate, getBaseCurrency
+│       ├── api-client.test.js      #   ApiClient GET/POST/PUT/DELETE, errores HTTP, network failure
+│       ├── login.test.js           #   LoginView: submit exitoso, PIN incorrecto, campos vacíos
+│       ├── calculator.test.js      #   CalculatorView: init, render, moneda base faltante, tasas ausentes
+│       ├── inventory.test.js       #   InventoryView: render, CRUD modals, stock bajo, filtro, API error
+│       ├── config.test.js          #   ConfigView: render monedas/tasas, badge Main, botón Set Base
+│       ├── reports.test.js         #   ReportsView: init con fecha, render tabla, export CSV, API error
+│       ├── sales.test.js           #   SalesView: init selects, filterProducts, placeholder, submit error
+│       └── app.test.js             #   AppView: bootstrap con API failure, console.error en red
 ├── iniciar_debian.sh               # Launcher Linux
 └── instalar_y_correr.bat           # Launcher Windows
 ```
@@ -205,7 +250,56 @@ bootstrap_migrations(db_url, metadata) ejecuta en cada boot:
    (DROP alembic_version + nueva baseline + stamp), otros (re-raise)
 9. Genera schema_trace.sql (DDL offline dump)
 
-## 11. Patrones de Diseño Implementados
+## 11. Frontend Architecture
+
+### CSS (7 archivos, carga secuencial en base.html)
+
+| Archivo | Propósito |
+|---------|-----------|
+| `static/css/base.css` | Variables, layout general, fondo cyberpunk animado, tipografía, scrollbar |
+| `static/css/login.css` | Login card centrada, input neon, botón glitch |
+| `static/css/calculator.css` | Grid de resultados por moneda, estilos de conversión |
+| `static/css/inventory.css` | Tabla de productos, badges de stock, modals CRUD |
+| `static/css/config.css` | Currency cards, rates list, botón de export |
+| `static/css/reports.css` | Tabla de transacciones, resumen de tarjetas |
+| `static/css/sales.css` | Formulario de venta, search de productos |
+
+### JS (10 archivos, plano sin módulos ES)
+
+Cargados en `base.html` en orden de dependencia (utils → components → api-client → app → vistas).
+No usan `import`/`export` porque los templates HTML referencian funciones globales via `onclick`.
+
+| Archivo | API pública | Dependencias |
+|---------|-------------|-------------|
+| `utils.js` | `formatMoney()`, `truncate()`, `escapeHtml()`, `formatDate()`, `getBaseCurrency()`, `getInverseRate()` | — |
+| `components.js` | `showMessage()`, `loadingIndicator()`, `renderCurrencySelect()`, `refreshApp()` | utils |
+| `api-client.js` | `ApiClient.get()`, `.post()`, `.put()`, `.delete()` | — |
+| `app.js` | `App.init()`, `App.state` (currencies, products, rates, transactions) | utils, components, api-client |
+| `login.js` | `LoginView.init()` | utils, api-client |
+| `calculator.js` | `CalculatorView.init()`, `CalculatorView.render()` | utils, api-client |
+| `inventory.js` | `InventoryView.init()`, `.render()`, `.openCreateModal()`, `.editProduct()`, `.deleteProduct()` | utils, components, api-client |
+| `config.js` | `ConfigView.init()`, `.renderCurrencies()`, `.renderRates()` | utils, components, api-client |
+| `reports.js` | `ReportView.init()`, `.fetchAndRender()`, `.exportCSV()` | utils, components, api-client |
+| `sales.js` | `SalesView.init()`, `.filterProducts()`, `.handleSubmit()` | utils, components, api-client |
+
+### Tailwind CSS
+
+- Build: `npm run build:css` → `npx tailwindcss -i ./static/src/input.css -o ./static/dist/tailwind.css --minify`
+- Content scan: `presentation/templates/**/*.html` (purgado de clases no usadas)
+- Tema cyberpunk: colores personalizados (cyber-*), fuente Orbitron + Fira Code
+
+### Frontend Tests (Jest + jsdom)
+
+- 78 tests, 9 suites, sin dependencias externas (mocks manuales de fetch/DOM)
+- Patrón `(0, eval)(code)` para cargar scripts planos en scope global de Jest
+- Setup: `localStorage` mock, `console.error` preservado, CSS mock (`styleMock.js`)
+- Cobertura defensiva: estados vacíos, errores HTTP (401, 500), network failure, NaN, negativos, caracteres especiales, elementos DOM faltantes, placeholders sin resultados
+
+```bash
+npm test
+```
+
+## 13. Patrones de Diseño Implementados
 
 | # | Patrón | Ubicación |
 |---|--------|-----------|
@@ -224,12 +318,18 @@ bootstrap_migrations(db_url, metadata) ejecuta en cada boot:
 | 13 | Upsert (Merge) | session.merge() para currencies y config |
 | 14 | Lookup-Then-Update | Productos y transacciones: query + update explícito |
 
-## 12. Tests (108 tests)
+## 14. Tests (186 tests: 108 backend + 78 frontend)
 
-### Fixtures (conftest.py)
+### Backend Fixtures (conftest.py)
 - db_engine (session scope): SQLite in-memory con StaticPool
 - db_session (function scope): SAVEPOINTs para aislamiento total
 - client (function scope): create_app("testing") + test client
+
+### Frontend Fixtures (setup.js + jest.config.js)
+- jsdom environment para simular DOM del navegador
+- localStorage mock (getItem/setItem/removeItem/clear)
+- CSS mock (styleMock.js) para evitar errores de import
+- Patrón `(0, eval)(code)` para cargar JS plano en scope global
 
 ### Distribución
 
@@ -246,8 +346,17 @@ bootstrap_migrations(db_url, metadata) ejecuta en cada boot:
 | tests/presentation/test_routes.py | 51 | routes.py (76%), auth.py (86%) |
 | tests/test_currency_converter.py | 5 | legacy converter (100%) |
 | tests/test_product.py | 4 | domain/models.py (91%) |
+| tests/frontend/utils.test.js | 16 | formatMoney, truncate, escapeHtml, formatDate, getBaseCurrency, getInverseRate |
+| tests/frontend/api-client.test.js | 8 | ApiClient.get/post/put/delete, HTTP errors, network failure |
+| tests/frontend/login.test.js | 5 | LoginView submit, PIN incorrecto, campos vacíos |
+| tests/frontend/calculator.test.js | 6 | CalculatorView init, render, moneda base faltante, tasas ausentes |
+| tests/frontend/inventory.test.js | 12 | InventoryView render, CRUD modals, stock bajo, API error |
+| tests/frontend/config.test.js | 8 | ConfigView render monedas/tasas, Main badge, Set Base, empty states |
+| tests/frontend/reports.test.js | 8 | ReportsView init, render tabla, export CSV, API failure |
+| tests/frontend/sales.test.js | 7 | SalesView init, filterProducts, placeholder, submit error |
+| tests/frontend/app.test.js | 8 | AppView bootstrap con API failure, console.error en red |
 
-### Cobertura por archivo (80% total)
+### Cobertura backend por archivo (80% total)
 
 | Archivo | Statements | Cobertura |
 |---------|-----------|-----------|
@@ -279,17 +388,25 @@ bootstrap_migrations(db_url, metadata) ejecuta en cada boot:
 ### Cómo ejecutar
 
 ```bash
-# Tests
+# Backend tests
 python -m pytest
 
-# Tests + cobertura
+# Backend tests + cobertura
 python run_coverage.py
 # Equivalente directo:
 python -m pytest --cov=domain --cov=use_cases --cov=infrastructure \
        --cov=presentation --cov=app --cov-report=term --cov-report=html tests/
+
+# Frontend tests
+npm test
+
+# Build Tailwind CSS
+npm run build:css
 ```
 
-## 13. Dependencias (requirements.txt)
+## 15. Dependencias (requirements.txt + package.json)
+
+### requirements.txt (backend)
 
 alembic==1.18.4, blinker==1.9.0, bottle==0.13.4, click==8.4.1,
 Flask==3.1.3, greenlet==3.5.1, iniconfig==2.3.0, itsdangerous==2.2.0,
@@ -298,14 +415,30 @@ pluggy==1.6.0, proxy_tools==0.1.0, Pygments==2.20.0, pytest==9.0.3,
 pytest-cov==6.1.1, pywebview==6.2.1, SQLAlchemy==2.0.49,
 typing_extensions==4.15.0, Werkzeug==3.1.8
 
-## 14. Plataformas Soportadas
+### package.json (frontend dev)
+
+```json
+{
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "tailwindcss": "^3.4.17"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/src/input.css -o ./static/dist/tailwind.css --minify",
+    "test": "jest --config tests/frontend/jest.config.js tests/frontend/"
+  }
+}
+```
+
+## 16. Plataformas Soportadas
 
 - Linux: iniciar_debian.sh (verifica Python/venv, instala deps, resuelve IP LAN)
 - Windows: instalar_y_correr.bat (auto-instala Python si falta, elevación admin,
   lanzamiento automático de navegador)
 - macOS: no tiene launcher dedicado pero funciona con python app.py
 
-## 15. Estado del Proyecto (2026-06-09)
+## 17. Estado del Proyecto (2026-06-14)
 
 ### Funcionalidades completadas
 - [x] CRUD completo de productos, monedas, tasas de cambio y transacciones
@@ -319,6 +452,10 @@ typing_extensions==4.15.0, Werkzeug==3.1.8
 - [x] Paths OS-agnósticos (Windows %APPDATA%, Linux ~/.config, macOS ~/Library)
 - [x] Filtro por fecha en transacciones
 - [x] SPA con Tailwind CSS (gestión, calculadora, reportes, ventas)
+- [x] Frontend modular: 10 JS + 7 CSS con template inheritance (base.html)
+- [x] Tailwind CSS local build vía npm (no CDN)
+- [x] 78 tests frontend con Jest + jsdom (cobertura defensiva completa)
+- [x] Patrón (0, eval)(code) para testing de JS plano sin módulos
 
 ### Pendientes / Áreas con baja cobertura
 - [ ] app.py (64%) — paths de producción no probados (create_engine real, seguridad,

@@ -1,1575 +1,324 @@
-<!--
-  BSD 3-Clause License
+{% extends "base.html" %}
+{% block title %}Calcify | Terminal SPA{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/calculator.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/inventory.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/config.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/sales.css') }}">
+{% endblock %}
+{% block body_class %}bg-zinc-950 text-gray-100 font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-200 h-screen flex flex-col overflow-hidden{% endblock %}
+{% block content %}
+<header class="bg-black border-b border-zinc-800 z-50 shrink-0">
+  <div class="px-4 md:px-6 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="text-xl font-bold tracking-widest uppercase text-white">Calcify</span>
+      <span class="px-2 py-0.5 rounded text-[0.65rem] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 hidden md:inline">SPA MODE</span>
+    </div>
+    <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-full">
+      <span class="relative flex h-2 w-2">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" id="sys-status-dot-ping"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-zinc-500" id="sys-status-dot"></span>
+      </span>
+      <span id="sys-status-text" class="text-[0.65rem] font-bold text-zinc-300 tracking-wider uppercase">Offline</span>
+    </div>
+  </div>
 
-  Copyright (c) 2026, yorlysoro
+  <nav class="flex overflow-x-auto px-4 md:px-6 gap-6 scrollbar-hide border-t border-zinc-900 md:border-none">
+    <button data-target="view-calculator" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-emerald-500 border-emerald-500">
+      <span>🧮</span> Calculadora
+    </button>
+    <button data-target="view-inventory" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700">
+      <span>📦</span> Inventario
+    </button>
+    <button data-target="view-config" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700">
+      <span>⚙️</span> Configuración
+    </button>
+    <button data-target="view-reports" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700">
+      <span>📊</span> Reports
+    </button>
+    <button data-target="view-sales" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700">
+      <span>🛒</span> Ventas
+    </button>
+  </nav>
+</header>
 
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
+<main class="flex-grow overflow-y-auto p-4 md:p-8 w-full max-w-6xl mx-auto">
 
-  1. Redistributions of source code must retain the above copyright notice, this
-     list of conditions and the following disclaimer.
-
-  2. Redistributions in binary form must reproduce the above copyright notice,
-     this list of conditions and the following disclaimer in the documentation
-     and/or other materials provided with the distribution.
-
-  3. Neither the name of the copyright holder nor the names of its
-     contributors may be used to endorse or promote products derived from
-     this software without specific prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
--->
-
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Calcify | Terminal SPA</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-              mono: ["JetBrains Mono", "ui-monospace", "monospace"],
-            },
-            colors: { cyber: { 500: "#10b981" } }, // Emerald-500 base mapping
-          },
-        },
-      };
-    </script>
-    <style>
-      input[type="number"]::-webkit-inner-spin-button,
-      input[type="number"]::-webkit-outer-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-      input[type="number"] {
-        -moz-appearance: textfield;
-      }
-      /* Smooth fade for tab switching */
-      section {
-        animation: fadeIn 0.3s ease-in-out;
-      }
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(5px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-    </style>
-  </head>
-  <body
-    class="bg-zinc-950 text-gray-100 font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-200 h-screen flex flex-col overflow-hidden"
-  >
-    <header class="bg-black border-b border-zinc-800 z-50 shrink-0">
-      <div class="px-4 md:px-6 h-14 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <span class="text-xl font-bold tracking-widest uppercase text-white"
-            >Calcify</span
-          >
-          <span
-            class="px-2 py-0.5 rounded text-[0.65rem] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 hidden md:inline"
-            >SPA MODE</span
-          >
+  <!-- Calculator View -->
+  <section id="view-calculator" class="w-full">
+    <div class="mb-6">
+      <h2 class="text-2xl font-light text-white">Financial <strong class="font-bold text-emerald-500">Matrix</strong></h2>
+      <p class="text-zinc-500 text-sm">Real-time cross-currency engine.</p>
+    </div>
+    <div class="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-6 shadow-2xl">
+      <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 mb-8">
+        <div class="relative group">
+          <label class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500">Base Amount</label>
+          <input type="number" id="calc-input" value="100.00" class="w-full bg-black border border-zinc-800 rounded-xl text-3xl p-5 text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors" />
         </div>
-        <div
-          class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-full"
-        >
-          <span class="relative flex h-2 w-2"
-            ><span
-              class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
-            ></span
-            ><span
-              class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"
-            ></span
-          ></span>
-          <span
-            class="text-[0.65rem] font-bold text-zinc-300 tracking-wider uppercase"
-            >Offline</span
-          >
+        <div class="relative md:w-48">
+          <label class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500">Source</label>
+          <select id="calc-base" class="w-full h-full min-h-[4rem] bg-black border border-zinc-800 rounded-xl text-xl p-5 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"></select>
         </div>
       </div>
+      <hr class="border-zinc-800 mb-6" />
+      <div id="calc-warning" class="text-zinc-500 text-sm mb-4 hidden"></div>
+      <div id="calc-results" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+  </section>
 
-      <nav
-        class="flex overflow-x-auto px-4 md:px-6 gap-6 scrollbar-hide border-t border-zinc-900 md:border-none"
-      >
-        <button
-          data-target="view-calculator"
-          class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-emerald-500 border-emerald-500"
-        >
-          <span>🧮</span> Calculadora
-        </button>
-        <button
-          data-target="view-inventory"
-          class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700"
-        >
-          <span>📦</span> Inventario
-        </button>
-        <button
-          data-target="view-config"
-          class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700"
-        >
-          <span>⚙️</span> Configuración
-        </button>
-        <button
-          data-target="view-reports"
-          class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700"
-        >
-          <span>📊</span> Reports
-        </button>
-        <button
-          data-target="view-sales"
-          class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700"
-        >
-          <span>🛒</span> Ventas
-        </button>
-      </nav>
-    </header>
+  <!-- Inventory View -->
+  <section id="view-inventory" class="hidden w-full">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
+      <div>
+        <h2 class="text-2xl font-light text-white">Product <strong class="font-bold text-emerald-500">Inventory</strong></h2>
+        <p class="text-zinc-500 text-sm">Manage assets and margins.</p>
+      </div>
+      <div class="flex gap-2 w-full md:w-auto">
+        <input type="text" id="inv-search" placeholder="Search product..." class="w-full md:w-64 bg-black border border-zinc-800 rounded text-sm px-4 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+        <button id="add-product-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors whitespace-nowrap shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50">+ Add Product</button>
+      </div>
+    </div>
+    <div class="bg-black border border-zinc-800 rounded-xl overflow-hidden shadow-2xl p-4 md:p-0">
+      <table class="hidden md:table w-full text-left text-sm whitespace-nowrap">
+        <thead class="bg-zinc-900 border-b border-zinc-800 text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest">
+          <tr>
+            <th class="px-6 py-4">Product Name</th>
+            <th class="px-6 py-4">Category</th>
+            <th class="px-6 py-4">Stock</th>
+            <th class="px-6 py-4">Cost Price</th>
+            <th class="px-6 py-4">Margin</th>
+            <th class="px-6 py-4">Sale Price</th>
+            <th class="px-6 py-4 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="inv-table-body" class="divide-y divide-zinc-800/50 text-zinc-300"></tbody>
+      </table>
+      <div id="inv-cards-container" class="grid grid-cols-1 gap-4 md:hidden"></div>
+    </div>
 
-    <main class="flex-grow overflow-y-auto p-4 md:p-8 w-full max-w-6xl mx-auto">
-      <section id="view-calculator" class="w-full">
-        <div class="mb-6">
-          <h2 class="text-2xl font-light text-white">
-            Financial <strong class="font-bold text-emerald-500">Matrix</strong>
-          </h2>
-          <p class="text-zinc-500 text-sm">Real-time cross-currency engine.</p>
+    <div id="product-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative overflow-hidden">
+        <div id="modal-loading" class="hidden absolute inset-0 bg-zinc-950/80 backdrop-blur flex items-center justify-center z-10">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
         </div>
-        <div
-          class="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-6 shadow-2xl"
-        >
-          <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 mb-8">
-            <div class="relative group">
-              <label
-                class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500"
-                >Base Amount</label
-              >
-              <input
-                type="number"
-                id="calc-input"
-                value="100.00"
-                class="w-full bg-black border border-zinc-800 rounded-xl text-3xl p-5 text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors"
-              />
-            </div>
-            <div class="relative md:w-48">
-              <label
-                class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500"
-                >Source</label
-              >
-              <select
-                id="calc-base"
-                class="w-full h-full min-h-[4rem] bg-black border border-zinc-800 rounded-xl text-xl p-5 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"
-              ></select>
-            </div>
-          </div>
-          <hr class="border-zinc-800 mb-6" />
-          <div id="calc-warning" class="text-zinc-500 text-sm mb-4 hidden"></div>
-          <div
-            id="calc-results"
-            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-          ></div>
-        </div>
-      </section>
-
-      <section id="view-inventory" class="hidden w-full">
-        <div
-          class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4"
-        >
+        <h3 id="modal-title" class="text-xl font-light text-white mb-4">Add <strong class="font-bold text-emerald-500">Product</strong></h3>
+        <form id="product-form" class="space-y-4">
           <div>
-            <h2 class="text-2xl font-light text-white">
-              Product
-              <strong class="font-bold text-emerald-500">Inventory</strong>
-            </h2>
-            <p class="text-zinc-500 text-sm">Manage assets and margins.</p>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Name</label>
+            <input type="text" id="prod-name" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
           </div>
-          <div class="flex gap-2 w-full md:w-auto">
-            <input
-              type="text"
-              id="inv-search"
-              placeholder="Search product..."
-              class="w-full md:w-64 bg-black border border-zinc-800 rounded text-sm px-4 py-2 text-white focus:border-emerald-500 focus:outline-none"
-            />
-            <button
-              id="add-product-btn"
-              class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors whitespace-nowrap shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50"
-            >
-              + Add Product
-            </button>
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Category</label>
+            <input type="text" id="prod-category" placeholder="e.g. Hardware, Services..." class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
           </div>
-        </div>
-
-        <div
-          class="bg-black border border-zinc-800 rounded-xl overflow-hidden shadow-2xl p-4 md:p-0"
-        >
-          <table
-            class="hidden md:table w-full text-left text-sm whitespace-nowrap"
-          >
-            <thead
-              class="bg-zinc-900 border-b border-zinc-800 text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest"
-            >
-              <tr>
-                <th class="px-6 py-4">Product Name</th>
-                <th class="px-6 py-4">Category</th>
-                <th class="px-6 py-4">Stock</th>
-                <th class="px-6 py-4">Cost Price</th>
-                <th class="px-6 py-4">Margin</th>
-                <th class="px-6 py-4">Sale Price</th>
-                <th class="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody
-              id="inv-table-body"
-              class="divide-y divide-zinc-800/50 text-zinc-300"
-            ></tbody>
-          </table>
-
-          <div
-            id="inv-cards-container"
-            class="grid grid-cols-1 gap-4 md:hidden"
-          ></div>
-        </div>
-
-        <div
-          id="product-modal"
-          class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-        >
-          <div
-            class="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative overflow-hidden"
-          >
-            <div
-              id="modal-loading"
-              class="hidden absolute inset-0 bg-zinc-950/80 backdrop-blur flex items-center justify-center z-10"
-            >
-              <div
-                class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"
-              ></div>
-            </div>
-
-            <h3 id="modal-title" class="text-xl font-light text-white mb-4">
-              Add <strong class="font-bold text-emerald-500">Product</strong>
-            </h3>
-            <form id="product-form" class="space-y-4">
-              <div>
-                <label
-                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                  >Name</label
-                >
-                <input
-                  type="text"
-                  id="prod-name"
-                  required
-                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label
-                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                  >Category</label
-                >
-                <input
-                  type="text"
-                  id="prod-category"
-                  placeholder="e.g. Hardware, Services..."
-                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                    >Cost Price</label
-                  >
-                  <input
-                    type="number"
-                    step="0.01"
-                    id="prod-cost"
-                    required
-                    class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label
-                    class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                    >Currency</label
-                  >
-                  <select
-                    id="prod-currency"
-                    class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
-                  ></select>
-                </div>
-              </div>
-              <div>
-                <label
-                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                  >Margin (%)</label
-                >
-                <input
-                  type="number"
-                  step="0.01"
-                  id="prod-margin"
-                  value="30.00"
-                  required
-                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label
-                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                  >Stock Quantity</label
-                >
-                <input
-                  type="number"
-                  id="prod-stock"
-                  value="0"
-                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-
-              <div
-                class="bg-zinc-900 border border-zinc-800 p-3 rounded text-center"
-              >
-                <span
-                  class="text-xs text-zinc-500 uppercase tracking-widest block mb-1"
-                  >Estimated Sale Price</span
-                >
-                <span
-                  id="live-price-preview"
-                  class="text-2xl font-mono text-emerald-400 font-bold"
-                  >0.00</span
-                >
-              </div>
-
-              <div class="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  id="close-modal-btn"
-                  class="px-4 py-2 text-sm font-bold text-zinc-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  id="save-modal-btn"
-                  class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded"
-                >
-                  Save
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </section>
-
-      <section id="view-config" class="hidden w-full max-w-2xl mx-auto">
-        <div
-          class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 mb-8 shadow-2xl"
-        >
-          <div class="flex justify-between items-center mb-6">
-            <h3
-              class="text-sm font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2"
-            >
-              <span>📊</span> Cierre Diario
-            </h3>
-            <span
-              class="text-xs font-mono text-zinc-500 bg-black px-2 py-1 rounded border border-zinc-800"
-              id="report-date"
-              >YYYY-MM-DD</span
-            >
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-black border border-red-900/30 p-4 rounded-lg">
-              <span
-                class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1"
-                >Total Compras</span
-              >
-              <span id="metric-purchases" class="text-xl font-mono text-red-400"
-                >Loading...</span
-              >
-            </div>
-            <div class="bg-black border border-emerald-900/30 p-4 rounded-lg">
-              <span
-                class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1"
-                >Total Ventas</span
-              >
-              <span id="metric-sales" class="text-xl font-mono text-emerald-400"
-                >Loading...</span
-              >
-            </div>
-            <div
-              class="bg-black border border-cyber-500/30 p-4 rounded-lg relative overflow-hidden group"
-            >
-              <div
-                class="absolute inset-0 bg-emerald-500/5 group-hover:bg-emerald-500/10 transition-colors"
-              ></div>
-              <span
-                class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1 relative z-10"
-                >Ganancia Neta</span
-              >
-              <span
-                id="metric-profit"
-                class="text-2xl font-bold font-mono text-white relative z-10"
-                >Loading...</span
-              >
-            </div>
-          </div>
-        </div>
-        <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 mb-8 shadow-2xl">
-          <h3
-            class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"
-          >
-            <span>💱</span> Currency Management
-          </h3>
-          <form id="config-currency-form" class="space-y-4 mb-6">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label
-                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                  >Code</label
-                >
-                <input
-                  type="text"
-                  id="cur-code"
-                  maxlength="3"
-                  required
-                  placeholder="USD"
-                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono uppercase focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label
-                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                  >Name</label
-                >
-                <input
-                  type="text"
-                  id="cur-name"
-                  required
-                  placeholder="US Dollar"
-                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label
-                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                  >Symbol</label
-                >
-                <input
-                  type="text"
-                  id="cur-symbol"
-                  required
-                  placeholder="$"
-                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-            </div>
-            <button
-              type="submit"
-              id="config-currency-btn"
-              class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50"
-            >
-              Add Currency
-            </button>
-          </form>
-          <div
-            id="config-currency-list"
-            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
-          ></div>
-        </div>
-
-        <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 mb-8 shadow-2xl">
-          <h3
-            class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"
-          >
-            <span>📈</span> Exchange Rates
-          </h3>
-          <form id="config-rate-form" class="space-y-4 mb-6">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label
-                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                  >Currency</label
-                >
-                <select
-                  id="rate-currency-code"
-                  required
-                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
-                ></select>
-              </div>
-              <div>
-                <label
-                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                  >Rate</label
-                >
-                <input
-                  type="number"
-                  step="0.000001"
-                  id="rate-value"
-                  required
-                  placeholder="1.000000"
-                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-            </div>
-            <button
-              type="submit"
-              id="config-rate-btn"
-              class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50"
-            >
-              Add Rate
-            </button>
-          </form>
-          <div
-            id="config-rates-list"
-            class="grid gap-2"
-          ></div>
-        </div>
-
-        <div class="mb-6">
-          <h2 class="text-2xl font-light text-white">
-            System <strong class="font-bold text-emerald-500">Settings</strong>
-          </h2>
-          <p class="text-zinc-500 text-sm">Security and data management.</p>
-        </div>
-
-        <div class="space-y-6">
-          <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
-            <h3
-              class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"
-            >
-              <span>🔒</span> Security
-            </h3>
-            <form id="config-pwd-form" class="space-y-4">
-              <div>
-                <label
-                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                  >New PIN</label
-                >
-                <input
-                  type="password"
-                  required
-                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label
-                  class="block text-xs text-zinc-500 uppercase tracking-wide mb-1"
-                  >Confirm PIN</label
-                >
-                <input
-                  type="password"
-                  required
-                  class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"
-                />
-              </div>
-              <button
-                type="submit"
-                class="w-full border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white font-bold text-sm px-4 py-2 rounded transition-colors"
-              >
-                Update Credentials
-              </button>
-            </form>
-          </div>
-
-          <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
-            <h3
-              class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"
-            >
-              <span>💾</span> Data Backup
-            </h3>
-            <p class="text-xs text-zinc-500 mb-4">
-              Export all currencies, products, and transactions to a secure JSON
-              file.
-            </p>
-            <button
-              id="config-export-btn"
-              class="w-full bg-transparent border border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-black font-bold uppercase tracking-widest text-sm py-3 rounded transition-all shadow-[0_0_10px_rgba(16,185,129,0.1)]"
-            >
-              Download JSON Backup
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section id="view-reports" class="hidden w-full">
-        <div class="mb-6">
-          <h2 class="text-2xl font-light text-white">
-            Transaction <strong class="font-bold text-emerald-500">Reports</strong>
-          </h2>
-          <p class="text-zinc-500 text-sm">Daily ledger with multi-currency conversion.</p>
-        </div>
-        <div class="flex flex-col md:flex-row gap-4 mb-6">
-          <div class="relative">
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Filter by Date</label>
-            <input type="date" id="report-date-filter"
-              class="bg-black border border-zinc-800 rounded px-4 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
-          </div>
-          <div class="flex items-end">
-            <button id="export-csv-btn"
-              class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">
-              Export CSV
-            </button>
-          </div>
-        </div>
-        <div class="hidden md:block overflow-x-auto w-full bg-black border border-zinc-800 rounded-xl">
-          <table class="w-full text-left text-sm whitespace-nowrap">
-            <thead class="bg-zinc-900 border-b border-zinc-800 text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest">
-              <tr>
-                <th class="px-4 py-4">Time</th>
-                <th class="px-4 py-4">Product Name</th>
-                <th class="px-4 py-4">Type</th>
-                <th class="px-4 py-4">Qty</th>
-                <th class="px-4 py-4">Unit Price (Original)</th>
-                <th class="px-4 py-4">Converted Values</th>
-              </tr>
-            </thead>
-            <tbody id="report-table-body" class="divide-y divide-zinc-800/50 text-zinc-300"></tbody>
-          </table>
-        </div>
-        <div id="report-cards-container" class="grid grid-cols-1 gap-4 md:hidden w-full mt-4"></div>
-      </section>
-
-      <section id="view-sales" class="hidden w-full">
-        <div class="mb-6">
-          <h2 class="text-2xl font-light text-white">
-            <strong class="font-bold text-emerald-500">Registrar</strong> Venta
-          </h2>
-          <p class="text-zinc-500 text-sm">Registra las ventas diarias y controla el inventario.</p>
-        </div>
-        <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 shadow-2xl">
-          <form id="sales-form" class="space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Producto</label>
-                <input type="text" id="sales-product-search" placeholder="Buscar producto..." class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none mb-2" />
-                <select id="sales-product" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"></select>
-              </div>
-              <div>
-                <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Cantidad</label>
-                <input type="number" id="sales-quantity" required min="1" step="1" placeholder="1" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
-              </div>
-              <div>
-                <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Precio Unitario</label>
-                <input type="number" id="sales-unit-price" required min="0" step="0.01" placeholder="0.00" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
-              </div>
-              <div>
-                <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Moneda</label>
-                <select id="sales-currency" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"></select>
-              </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Cost Price</label>
+              <input type="number" step="0.01" id="prod-cost" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
             </div>
             <div>
-              <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Comentario <span class="text-zinc-600">(opcional)</span></label>
-              <textarea id="sales-comment" rows="2" placeholder="Notas sobre la venta..." class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none resize-none"></textarea>
+              <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Currency</label>
+              <select id="prod-currency" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"></select>
             </div>
-            <button type="submit" id="sales-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">
-              Registrar Venta
-            </button>
-            <div id="sales-message"></div>
-          </form>
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Margin (%)</label>
+            <input type="number" step="0.01" id="prod-margin" value="30.00" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Stock Quantity</label>
+            <input type="number" id="prod-stock" value="0" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+          </div>
+          <div class="bg-zinc-900 border border-zinc-800 p-3 rounded text-center">
+            <span class="text-xs text-zinc-500 uppercase tracking-widest block mb-1">Estimated Sale Price</span>
+            <span id="live-price-preview" class="text-2xl font-mono text-emerald-400 font-bold">0.00</span>
+          </div>
+          <div class="flex justify-end gap-3 mt-6">
+            <button type="button" id="close-modal-btn" class="px-4 py-2 text-sm font-bold text-zinc-400 hover:text-white">Cancel</button>
+            <button type="submit" id="save-modal-btn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Config View -->
+  <section id="view-config" class="hidden w-full max-w-2xl mx-auto">
+    <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 mb-8 shadow-2xl">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2"><span>📊</span> Cierre Diario</h3>
+        <span class="text-xs font-mono text-zinc-500 bg-black px-2 py-1 rounded border border-zinc-800" id="report-date">YYYY-MM-DD</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-black border border-red-900/30 p-4 rounded-lg">
+          <span class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1">Total Compras</span>
+          <span id="metric-purchases" class="text-xl font-mono text-red-400">Loading...</span>
         </div>
-      </section>
-    </main>
-
-    <script>
-      // ==========================================
-      // 1. API CLIENT (Core HTTP Interceptor)
-      // ==========================================
-      const ApiClient = {
-        async _request(url, options = {}) {
-          const headers = {
-            "Content-Type": "application/json",
-            ...options.headers,
-          };
-          try {
-            const response = await fetch(url, { ...options, headers });
-
-            if (response.status === 401) {
-              console.warn("[Security] Session expired. Redirecting...");
-              window.location.href = "/login";
-              return new Promise(() => {}); // Halt execution
-            }
-
-            const contentType = response.headers.get("content-type");
-            if (contentType && !contentType.includes("application/json"))
-              return response;
-
-            const data = await response.json();
-            if (!response.ok)
-              throw new Error(data.error || `HTTP Error: ${response.status}`);
-            return data;
-          } catch (error) {
-            console.error(
-              `[ApiClient] ${options.method || "GET"} ${url} failed:`,
-              error.message,
-            );
-            throw error;
-          }
-        },
-        get(url) {
-          return this._request(url, { method: "GET" });
-        },
-        post(url, data) {
-          return this._request(url, {
-            method: "POST",
-            body: JSON.stringify(data),
-          });
-        },
-        delete(url) {
-          return this._request(url, { method: "DELETE" });
-        },
-      };
-
-      // ==========================================
-      // 2. MAIN APP CONTROLLER (Global State)
-      // ==========================================
-      const App = {
-        state: {
-          currentTab: "view-calculator",
-          currencies: [],
-          products: [],
-          rates: [],
-        },
-
-        async init() {
-          // Parallel data fetching for maximum performance
-          try {
-            const [curRes, prodRes, ratesRes] = await Promise.all([
-              ApiClient.get("/api/v1/currencies"),
-              ApiClient.get("/api/v1/products"),
-              ApiClient.get("/api/v1/rates/latest"),
-            ]);
-
-            this.state.currencies = curRes.data;
-            this.state.products = prodRes.data;
-            this.state.rates = ratesRes.data;
-
-            // Update UI Status
-            document.getElementById("sys-status-text").textContent = "Online";
-            document
-              .getElementById("sys-status-dot")
-              .classList.replace("bg-zinc-500", "bg-emerald-500");
-          } catch (error) {
-            alert("Failed to bootstrap application data. See console.");
-          }
-
-          // Initialize Views using the populated global state
-          CalculatorView.init();
-          InventoryView.init();
-          ConfigView.init();
-          ReportView.init();
-          SalesView.init();
-
-          // Bind Tab Navigation
-          document.querySelectorAll(".tab-btn").forEach((btn) => {
-            btn.addEventListener("click", (e) =>
-              this.switchTab(e.currentTarget.dataset.target),
-            );
-          });
-        },
-
-        switchTab(targetId) {
-          this.state.currentTab = targetId;
-          document.querySelectorAll("main > section").forEach((sec) => {
-            sec.classList.toggle("hidden", sec.id !== targetId);
-          });
-          document.querySelectorAll(".tab-btn").forEach((btn) => {
-            const isActive = btn.dataset.target === targetId;
-            btn.classList.toggle("text-emerald-500", isActive);
-            btn.classList.toggle("border-emerald-500", isActive);
-            btn.classList.toggle("text-zinc-500", !isActive);
-            btn.classList.toggle("border-transparent", !isActive);
-          });
-        },
-      };
-
-      // ==========================================
-      // 3. CALCULATOR VIEW MODULE
-      // ==========================================
-      const CalculatorView = {
-        init() {
-          this.inputEl = document.getElementById("calc-input");
-          this.selectEl = document.getElementById("calc-base");
-          this.resultsEl = document.getElementById("calc-results");
-          this.warningEl = document.getElementById("calc-warning");
-
-          this.selectEl.innerHTML = "";
-          App.state.currencies.forEach((cur) => {
-            const opt = document.createElement("option");
-            opt.value = cur.code;
-            opt.textContent = `${cur.code} - ${cur.name}`;
-            this.selectEl.appendChild(opt);
-          });
-
-          this.inputEl.addEventListener("input", () => this.render());
-          this.selectEl.addEventListener("change", () => this.render());
-
-          this.render();
-        },
-
-        getBaseCurrency() {
-          return App.state.currencies.find(c => c.is_main === true);
-        },
-
-        truncate(value) {
-          return Math.round((value + Number.EPSILON) * 10000) / 10000;
-        },
-
-        formatMoney(value, currency) {
-          return new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency: currency,
-          }).format(value);
-        },
-
-        getInverseRate(code) {
-          const base = this.getBaseCurrency();
-          if (base && code === base.code) return 1.0;
-          const r = App.state.rates.find(x => x.currency_code === code);
-          return r ? parseFloat(r.inverse_rate) : 1.0;
-        },
-
-        render() {
-          const base = this.getBaseCurrency();
-          if (!base) {
-            this.resultsEl.innerHTML = `<div class="col-span-full text-center py-8 text-zinc-500">⚠️ Please set a base currency in <button onclick="App.switchTab('view-config')" class="text-emerald-500 hover:underline">Settings</button> to use the calculator.</div>`;
-            return;
-          }
-
-          const amount = parseFloat(this.inputEl.value) || 0;
-          const baseCur = this.selectEl.value || base.code;
-          const sourceInverse = this.getInverseRate(baseCur);
-
-          this.resultsEl.innerHTML = "";
-          if (!baseCur) return;
-
-          App.state.currencies.forEach((cur) => {
-            if (cur.code === baseCur) return;
-
-            const targetInverse = this.getInverseRate(cur.code);
-            const finalVal = this.truncate((amount * targetInverse) / sourceInverse);
-            const exchangeRate = this.truncate(targetInverse / sourceInverse).toFixed(4);
-
-            this.resultsEl.innerHTML += `
-                <div class="bg-black border border-zinc-800 rounded-xl p-5 flex flex-col justify-between shadow-lg">
-                    <div class="flex justify-between items-center mb-4">
-                        <span class="text-zinc-400 text-sm font-medium tracking-widest uppercase">${cur.code}</span>
-                        <span class="px-2 py-1 bg-zinc-900 rounded text-[0.65rem] text-zinc-500 font-mono border border-zinc-800">Rate: ${exchangeRate}</span>
-                    </div>
-                    <div class="text-2xl font-mono text-white truncate">${this.formatMoney(finalVal, cur.code)}</div>
-                </div>
-            `;
-          });
-        },
-      };
-
-      // ==========================================
-      // 4. INVENTORY VIEW MODULE (CRUD Integration)
-      // ==========================================
-      // Add DELETE method to ApiClient (put this inside your existing ApiClient object)
-      // delete(url) { return this._request(url, { method: 'DELETE' }); }
-
-      // ==========================================
-      // INVENTORY VIEW MODULE (Dual UI & Reactive)
-      // ==========================================
-      const InventoryView = {
-        editingId: null,
-
-        init() {
-          this.tbodyEl = document.getElementById("inv-table-body");
-          this.cardsContainer = document.getElementById("inv-cards-container");
-          this.searchInput = document.getElementById("inv-search");
-
-          this.searchInput.addEventListener("input", (e) =>
-            this.render(e.target.value),
-          );
-
-          this.initModal();
-          this.render();
-        },
-
-        initModal() {
-          const modal = document.getElementById("product-modal");
-          const form = document.getElementById("product-form");
-          const currencySelect = document.getElementById("prod-currency");
-          const costInput = document.getElementById("prod-cost");
-          const marginInput = document.getElementById("prod-margin");
-          const previewEl = document.getElementById("live-price-preview");
-
-          // Populate Currencies
-          currencySelect.innerHTML = "";
-          App.state.currencies.forEach((cur) => {
-            const opt = document.createElement("option");
-            opt.value = opt.textContent = cur.code;
-            currencySelect.appendChild(opt);
-          });
-
-          // LIVE PREVIEW CALCULATION
-          const updatePreview = () => {
-            const cost = parseFloat(costInput.value) || 0;
-            const margin = parseFloat(marginInput.value) || 0;
-            const salePrice = cost * (1 + margin / 100);
-            previewEl.textContent = CalculatorView.formatMoney(
-              salePrice,
-              currencySelect.value || "USD",
-            );
-          };
-
-          costInput.addEventListener("input", updatePreview);
-          marginInput.addEventListener("input", updatePreview);
-          currencySelect.addEventListener("change", updatePreview);
-
-          // Modal Toggles
-          document
-            .getElementById("add-product-btn")
-            .addEventListener("click", () => {
-              this.editingId = null;
-              document.getElementById("modal-title").innerHTML =
-                'Add <strong class="font-bold text-emerald-500">Product</strong>';
-              document.getElementById("save-modal-btn").textContent = "Save";
-              form.reset();
-              updatePreview();
-              modal.classList.remove("hidden");
-            });
-          document
-            .getElementById("close-modal-btn")
-            .addEventListener("click", () => {
-              this.editingId = null;
-              modal.classList.add("hidden");
-              form.reset();
-              updatePreview();
-            });
-
-          // ASYNC FORM SUBMISSION
-          form.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const loader = document.getElementById("modal-loading");
-            loader.classList.remove("hidden"); // Disable form interaction
-
-            const stockInput = document.getElementById("prod-stock");
-
-            const payload = {
-              name: document.getElementById("prod-name").value,
-              category:
-                document.getElementById("prod-category").value.trim() ||
-                "Uncategorized",
-              cost_price: costInput.value,
-              cost_currency_code: currencySelect.value,
-              margin_percentage: marginInput.value,
-              stock_quantity: parseInt(stockInput.value) || 0,
-            };
-
-            try {
-              if (this.editingId) {
-                await ApiClient._request(
-                  `/api/v1/products/${this.editingId}`,
-                  { method: "PUT", body: JSON.stringify(payload) },
-                );
-              } else {
-                payload.id = crypto.randomUUID();
-                await ApiClient.post("/api/v1/products", payload);
-              }
-              // Refresh Data
-              const res = await ApiClient.get("/api/v1/products");
-              App.state.products = res.data;
-              this.render();
-
-              this.editingId = null;
-              modal.classList.add("hidden");
-              form.reset();
-              updatePreview();
-            } catch (error) {
-              alert(`Error saving product: ${error.message}`);
-            } finally {
-              loader.classList.add("hidden");
-            }
-          });
-        },
-
-        editProduct(id) {
-          const product = App.state.products.find((p) => p.id === id);
-          if (!product) return;
-
-          this.editingId = id;
-          document.getElementById("modal-title").innerHTML =
-            'Edit <strong class="font-bold text-emerald-500">Product</strong>';
-          document.getElementById("save-modal-btn").textContent = "Update";
-          document.getElementById("prod-name").value = product.name;
-          document.getElementById("prod-category").value = product.category || "";
-          document.getElementById("prod-cost").value = product.cost_price;
-          document.getElementById("prod-currency").value = product.cost_currency_code;
-          document.getElementById("prod-margin").value = product.margin_percentage;
-          document.getElementById("prod-stock").value = product.stock_quantity ?? 0;
-
-          const previewEl = document.getElementById("live-price-preview");
-          const cost = parseFloat(product.cost_price) || 0;
-          const margin = parseFloat(product.margin_percentage) || 0;
-          previewEl.textContent = CalculatorView.formatMoney(
-            cost * (1 + margin / 100),
-            product.cost_currency_code,
-          );
-
-          document.getElementById("product-modal").classList.remove("hidden");
-        },
-
-        async deleteProduct(id) {
-          if (!confirm("Are you sure you want to delete this product?")) return;
-
-          try {
-            await ApiClient.delete(`/api/v1/products/${id}`);
-            App.state.products = App.state.products.filter((p) => p.id !== id);
-            this.render();
-          } catch (error) {
-            alert(`Error deleting: ${error.message}`);
-          }
-        },
-
-        render(filterText = "") {
-          this.tbodyEl.innerHTML = "";
-          this.cardsContainer.innerHTML = "";
-
-          const filtered = App.state.products.filter((p) =>
-            p.name.toLowerCase().includes(filterText.toLowerCase()),
-          );
-
-          if (filtered.length === 0) {
-            this.tbodyEl.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-zinc-500">No products found.</td></tr>`;
-            this.cardsContainer.innerHTML = `<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">No products found.</div>`;
-            return;
-          }
-
-          filtered.forEach((p) => {
-            const cost = parseFloat(p.cost_price);
-            const margin = parseFloat(p.margin_percentage);
-            const salePrice = cost * (1 + margin / 100);
-            const formattedCost = CalculatorView.formatMoney(
-              cost,
-              p.cost_currency_code,
-            );
-            const formattedSale = CalculatorView.formatMoney(
-              salePrice,
-              p.cost_currency_code,
-            );
-
-            // 1. Render Desktop Table Row
-            this.tbodyEl.innerHTML += `
-                <tr class="hover:bg-zinc-900/50 transition-colors group">
-                    <td class="px-6 py-4 font-medium text-white">${p.name}</td>
-                    <td class="px-6 py-4 text-zinc-500 text-xs">${p.category || "-"}</td>
-                    <td class="px-6 py-4 font-mono text-zinc-400">${p.stock_quantity ?? 0}</td>
-                    <td class="px-6 py-4 font-mono text-zinc-400">${formattedCost}</td>
-                    <td class="px-6 py-4 font-mono text-emerald-500">+${p.margin_percentage}%</td>
-                    <td class="px-6 py-4 font-mono text-white font-bold">${formattedSale}</td>
-                    <td class="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onclick="InventoryView.editProduct('${p.id}')" class="text-emerald-500 hover:text-emerald-400 font-bold text-xs uppercase tracking-wider mr-3">Edit</button>
-                        <button onclick="InventoryView.deleteProduct('${p.id}')" class="text-red-500 hover:text-red-400 font-bold text-xs uppercase tracking-wider">Delete</button>
-                    </td>
-                </tr>
-            `;
-
-            // 2. Render Mobile Soft Card
-            this.cardsContainer.innerHTML += `
-                <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 flex flex-col gap-3">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="text-lg font-bold text-white leading-tight">${p.name}</h4>
-                            <span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">${p.category || "-"}</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="block text-[0.65rem] text-zinc-500 uppercase tracking-widest">Sale Price</span>
-                            <span class="font-mono font-bold text-emerald-400">${formattedSale}</span>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center bg-black rounded p-2 border border-zinc-800/50">
-                        <span class="text-xs text-zinc-400 font-mono">Stock: ${p.stock_quantity ?? 0}</span>
-                        <span class="text-xs text-zinc-400 font-mono">Cost: ${formattedCost}</span>
-                        <span class="text-xs text-emerald-500 font-mono">+${p.margin_percentage}%</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2 mt-2">
-                        <button onclick="InventoryView.editProduct('${p.id}')" class="bg-zinc-800 text-zinc-300 py-2 rounded text-xs font-bold uppercase tracking-wider">Edit</button>
-                        <button onclick="InventoryView.deleteProduct('${p.id}')" class="bg-red-900/20 text-red-500 border border-red-900/30 py-2 rounded text-xs font-bold uppercase tracking-wider">Delete</button>
-                    </div>
-                </div>
-            `;
-          });
-        },
-      };
-
-      // ==========================================
-      // DAILY REPORTS LOGIC (Add to App.init)
-      // ==========================================
-      // Inside App.init(), after loading products and currencies, add this block:
-      /*
-        try {
-            // Set today's date on the UI
-            document.getElementById('report-date').textContent = new Date().toISOString().split('T')[0];
-            
-            // Attempt to fetch transactions (Will fail gracefully if backend isn't ready)
-            const txRes = await ApiClient.get('/api/v1/transactions');
-            const transactions = txRes.data; 
-            
-            // Assuming Transactions have { transaction_type: 'IN' | 'OUT', unit_price: "100.00", quantity: 1 }
-            let totalSales = 0; // INFLOW
-            let totalPurchases = 0; // OUTFLOW
-            
-            // Note: A true enterprise app would convert these to the base currency first 
-            // using the cross-rates logic, but we sum them directly here for the prototype.
-            transactions.forEach(tx => {
-                const amount = parseFloat(tx.unit_price) * tx.quantity;
-                if(tx.transaction_type === 'IN') totalSales += amount;
-                else if(tx.transaction_type === 'OUT') totalPurchases += amount;
-            });
-            
-            const netProfit = totalSales - totalPurchases;
-            
-            document.getElementById('metric-purchases').textContent = CalculatorView.formatMoney(totalPurchases, 'USD');
-            document.getElementById('metric-sales').textContent = CalculatorView.formatMoney(totalSales, 'USD');
-            document.getElementById('metric-profit').textContent = CalculatorView.formatMoney(netProfit, 'USD');
-
-        } catch (error) {
-            console.warn("Transactions API not ready yet. Daily report is mocked to zero.");
-            document.getElementById('metric-purchases').textContent = "$0.00";
-            document.getElementById('metric-sales').textContent = "$0.00";
-            document.getElementById('metric-profit').textContent = "$0.00";
-        }
-*/
-
-      // ==========================================
-      // 5. CONFIGURATION VIEW MODULE
-      // ==========================================
-      const ConfigView = {
-        init() {
-          this.renderCurrencies();
-          this.renderRates();
-
-          const rateSelect = document.getElementById("rate-currency-code");
-          rateSelect.innerHTML = "";
-          App.state.currencies.forEach((cur) => {
-            const opt = document.createElement("option");
-            opt.value = cur.code;
-            opt.textContent = `${cur.code} - ${cur.name}`;
-            rateSelect.appendChild(opt);
-          });
-
-          document
-            .getElementById("config-currency-form")
-            .addEventListener("submit", async (e) => {
-              e.preventDefault();
-              const btn = document.getElementById("config-currency-btn");
-              btn.disabled = true;
-
-              const payload = {
-                code: document.getElementById("cur-code").value,
-                name: document.getElementById("cur-name").value,
-                symbol: document.getElementById("cur-symbol").value,
-              };
-
-              try {
-                await ApiClient.post("/api/v1/currencies", payload);
-                const res = await ApiClient.get("/api/v1/currencies");
-                App.state.currencies = res.data;
-                this.renderCurrencies();
-                document.getElementById("config-currency-form").reset();
-                CalculatorView.init();
-                InventoryView.initModal();
-              } catch (error) {
-                alert(`Error adding currency: ${error.message}`);
-              } finally {
-                btn.disabled = false;
-              }
-            });
-
-          document
-            .getElementById("config-rate-form")
-            .addEventListener("submit", async (e) => {
-              e.preventDefault();
-              const btn = document.getElementById("config-rate-btn");
-              btn.disabled = true;
-
-              const payload = {
-                currency_code: document.getElementById("rate-currency-code").value,
-                rate: document.getElementById("rate-value").value,
-              };
-
-              try {
-                await ApiClient.post("/api/v1/rates", payload);
-                const res = await ApiClient.get("/api/v1/rates/latest");
-                App.state.rates = res.data;
-                document.getElementById("config-rate-form").reset();
-                this.renderRates();
-                CalculatorView.render();
-              } catch (error) {
-                alert(`Error adding rate: ${error.message}`);
-              } finally {
-                btn.disabled = false;
-              }
-            });
-
-          // Because the endpoint triggers a Content-Disposition attachment,
-          // window.open gracefully handles the download using the active session cookies!
-          document
-            .getElementById("config-export-btn")
-            .addEventListener("click", () => {
-              window.open("/api/v1/backup/export", "_blank");
-            });
-        },
-
-        renderCurrencies() {
-          const container = document.getElementById("config-currency-list");
-          container.innerHTML = "";
-          App.state.currencies.forEach((cur) => {
-            const card = document.createElement("div");
-            card.className =
-              "bg-black border border-zinc-800 rounded-lg p-4 text-center";
-            card.innerHTML = `
-                <div class="text-2xl mb-1">${cur.symbol}</div>
-                <div class="font-mono font-bold text-emerald-400 text-sm">${cur.code}</div>
-                <div class="text-xs text-zinc-500 truncate">${cur.name}</div>
-                ${cur.is_main ? '<div class="text-[0.6rem] uppercase tracking-widest text-amber-500 mt-1">★ Main</div>' : `<button onclick="ConfigView.setMainCurrency('${cur.code}')" class="text-[0.6rem] uppercase tracking-widest text-emerald-500 hover:text-emerald-400 mt-1">Set Base</button>`}
-              `;
-            container.appendChild(card);
-          });
-        },
-
-        async setMainCurrency(code) {
-          try {
-            await ApiClient._request(`/api/v1/currencies/${code}/set_main`, { method: "PUT" });
-            const res = await ApiClient.get("/api/v1/currencies");
-            App.state.currencies = res.data;
-            this.renderCurrencies();
-            CalculatorView.init();
-          } catch (error) {
-            alert(`Error setting base currency: ${error.message}`);
-          }
-        },
-
-        renderRates() {
-          const container = document.getElementById("config-rates-list");
-          container.innerHTML = "";
-          if (App.state.rates.length === 0) {
-            container.innerHTML = '<div class="text-zinc-600 text-sm text-center py-4">No rates configured.</div>';
-            return;
-          }
-          App.state.rates.forEach((r) => {
-            const row = document.createElement("div");
-            row.className =
-              "bg-black border border-zinc-800 rounded-lg px-4 py-3 flex items-center justify-between";
-            row.innerHTML = `
-                <div>
-                  <span class="font-mono font-bold text-emerald-400 text-sm">${r.currency_code}</span>
-                  <span class="font-mono text-white text-sm ml-3">${r.rate}</span>
-                </div>
-                <button onclick="ConfigView.deleteRate('${r.id}')" class="text-red-500 hover:text-red-400 text-xs font-bold uppercase tracking-wider">Delete</button>
-              `;
-            container.appendChild(row);
-          });
-        },
-
-        async deleteRate(id) {
-          if (!confirm("Delete this exchange rate?")) return;
-          try {
-            await ApiClient.delete(`/api/v1/rates/${id}`);
-            const res = await ApiClient.get("/api/v1/rates/latest");
-            App.state.rates = res.data;
-            this.renderRates();
-            CalculatorView.render();
-          } catch (error) {
-            alert(`Error deleting rate: ${error.message}`);
-          }
-        },
-      };
-
-      // ==========================================
-      // 6. REPORT VIEW MODULE (Filter & Export)
-      // ==========================================
-      const ReportView = {
-        transactions: [],
-
-        init() {
-          this.dateInput = document.getElementById("report-date-filter");
-          this.exportBtn = document.getElementById("export-csv-btn");
-          this.tbody = document.getElementById("report-table-body");
-
-          this.dateInput.value = new Date().toISOString().split("T")[0];
-
-          this.dateInput.addEventListener("change", () => this.fetchAndRender());
-          this.exportBtn.addEventListener("click", () => this.exportCSV());
-
-          this.fetchAndRender();
-        },
-
-        getBaseCurrency() {
-          return App.state.currencies.find(c => c.is_main === true);
-        },
-
-        getInverseRate(code) {
-          const base = this.getBaseCurrency();
-          if (base && code === base.code) return 1.0;
-          const r = App.state.rates.find(x => x.currency_code === code);
-          return r ? parseFloat(r.inverse_rate) : 1.0;
-        },
-
-        truncate(value) {
-          return Math.round((value + Number.EPSILON) * 10000) / 10000;
-        },
-
-        async fetchAndRender() {
-          const date = this.dateInput.value;
-          if (!date) return;
-
-          try {
-            const res = await ApiClient.get(`/api/v1/transactions?date=${date}`);
-            this.transactions = res.data;
-            this.render();
-          } catch (error) {
-            console.error("Failed to fetch transactions:", error.message);
-            this.tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-zinc-500">Failed to load transactions.</td></tr>`;
-            document.getElementById("report-cards-container").innerHTML = `<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">Failed to load transactions.</div>`;
-          }
-        },
-
-        render() {
-          const cardsContainer = document.getElementById("report-cards-container");
-          this.tbody.innerHTML = "";
-          cardsContainer.innerHTML = "";
-
-          if (this.transactions.length === 0) {
-            this.tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-zinc-500">No transactions for this date.</td></tr>`;
-            cardsContainer.innerHTML = `<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">No transactions for this date.</div>`;
-            return;
-          }
-
-          this.transactions.forEach(tx => {
-            const product = App.state.products.find(p => p.id === tx.product_id);
-            const productName = product ? product.name : tx.product_id;
-            const time = new Date(tx.created_at).toLocaleTimeString();
-
-            const sourceInverse = this.getInverseRate(tx.currency_code);
-
-            let convertedCol = "";
-            let convertedCards = "";
-            App.state.currencies.forEach(cur => {
-              if (cur.code === tx.currency_code) return;
-              const targetInverse = this.getInverseRate(cur.code);
-              const converted = this.truncate((parseFloat(tx.unit_price) * targetInverse) / sourceInverse);
-              const formatted = converted.toFixed(2);
-              convertedCol += `<span class="block text-xs font-mono">${cur.code}: ${formatted}</span>`;
-              convertedCards += `<span class="text-xs font-mono">${cur.code}: ${formatted}</span>`;
-            });
-
-            this.tbody.innerHTML += `
-                <tr class="hover:bg-zinc-900/50 transition-colors">
-                  <td class="px-4 py-3 font-mono text-xs text-zinc-400">${time}</td>
-                  <td class="px-4 py-3 text-white">${productName}</td>
-                  <td class="px-4 py-3"><span class="${tx.transaction_type === 'IN' ? 'text-emerald-500' : 'text-red-500'} font-bold">${tx.transaction_type}</span></td>
-                  <td class="px-4 py-3 font-mono">${tx.quantity}</td>
-                  <td class="px-4 py-3 font-mono">${CalculatorView.formatMoney(parseFloat(tx.unit_price), tx.currency_code)}</td>
-                  <td class="px-4 py-3 text-xs">${convertedCol}</td>
-                </tr>
-              `;
-
-            const typeBadge = tx.transaction_type === 'IN'
-              ? '<span class="text-emerald-500 font-bold">IN</span>'
-              : '<span class="text-red-500 font-bold">OUT</span>';
-
-            cardsContainer.innerHTML += `
-                <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 flex flex-col gap-2">
-                  <div class="flex justify-between items-start">
-                    <h4 class="font-bold text-white">${productName}</h4>
-                    <span class="font-mono text-xs text-zinc-400">${time}</span>
-                  </div>
-                  <div class="grid grid-cols-2 gap-2 text-sm text-zinc-400">
-                    <div><span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">Type</span><br/>${typeBadge}</div>
-                    <div><span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">Qty</span><br/><span class="font-mono">${tx.quantity}</span></div>
-                    <div><span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">Unit Price</span><br/><span class="font-mono">${CalculatorView.formatMoney(parseFloat(tx.unit_price), tx.currency_code)}</span></div>
-                    <div><span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">Converted</span><br/>${convertedCards}</div>
-                  </div>
-                </div>
-              `;
-          });
-        },
-
-        exportCSV() {
-          const date = this.dateInput.value;
-          if (this.transactions.length === 0) {
-            alert("No data to export.");
-            return;
-          }
-
-          const currencyCodes = App.state.currencies.map(c => c.code);
-          const headers = ["Time", "Product Name", "Type", "Qty", "Unit Price", ...currencyCodes];
-
-          const rows = this.transactions.map(tx => {
-            const product = App.state.products.find(p => p.id === tx.product_id);
-            const productName = product ? product.name : tx.product_id;
-            const time = new Date(tx.created_at).toLocaleTimeString();
-            const sourceInverse = this.getInverseRate(tx.currency_code);
-
-            const converted = currencyCodes.map(code => {
-              const targetInverse = this.getInverseRate(code);
-              return this.truncate((parseFloat(tx.unit_price) * targetInverse) / sourceInverse).toFixed(2);
-            });
-
-            return [time, productName, tx.transaction_type, tx.quantity, tx.unit_price, ...converted];
-          });
-
-          const csvString = [
-            headers.join(","),
-            ...rows.map(row => row.map(cell => `"${cell}"`).join(",")),
-          ].join("\n");
-
-          const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `report-${date}.csv`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        },
-      };
-
-      // ==========================================
-      // 7. SALES VIEW MODULE
-      // ==========================================
-      const SalesView = {
-        init() {
-          this.productSelect = document.getElementById("sales-product");
-          this.currencySelect = document.getElementById("sales-currency");
-          this.quantityInput = document.getElementById("sales-quantity");
-          this.priceInput = document.getElementById("sales-unit-price");
-          this.commentInput = document.getElementById("sales-comment");
-          this.messageEl = document.getElementById("sales-message");
-          this.submitBtn = document.getElementById("sales-submit-btn");
-          this.searchInput = document.getElementById("sales-product-search");
-
-          this.populateSelects();
-          this.searchInput.addEventListener("input", () => this.filterProducts());
-          document.getElementById("sales-form").addEventListener("submit", (e) => this.handleSubmit(e));
-        },
-
-        populateSelects() {
-          this.productSelect.innerHTML = "";
-          App.state.products.forEach((p) => {
-            const opt = document.createElement("option");
-            opt.value = p.id;
-            opt.textContent = `${p.name} (Stock: ${p.stock_quantity})`;
-            opt.dataset.stock = p.stock_quantity;
-            this.productSelect.appendChild(opt);
-          });
-
-          this.currencySelect.innerHTML = "";
-          App.state.currencies.forEach((c) => {
-            const opt = document.createElement("option");
-            opt.value = c.code;
-            opt.textContent = `${c.code} - ${c.name}`;
-            this.currencySelect.appendChild(opt);
-          });
-
-          this.searchInput.value = "";
-          this.filterProducts();
-        },
-
-        filterProducts() {
-          const searchTerm = this.searchInput.value.toLowerCase();
-          const options = this.productSelect.querySelectorAll("option");
-
-          let visibleCount = 0;
-          options.forEach((opt) => {
-            if (opt.dataset.placeholder) {
-              opt.remove();
-              return;
-            }
-            const match = opt.textContent.toLowerCase().includes(searchTerm);
-            opt.style.display = match ? "" : "none";
-            if (match) visibleCount++;
-          });
-
-          if (visibleCount === 0) {
-            const placeholder = document.createElement("option");
-            placeholder.disabled = true;
-            placeholder.selected = true;
-            placeholder.dataset.placeholder = "true";
-            placeholder.textContent = "\u2014 Sin resultados \u2014";
-            this.productSelect.appendChild(placeholder);
-          }
-        },
-
-        async handleSubmit(e) {
-          e.preventDefault();
-          this.submitBtn.disabled = true;
-          this.submitBtn.textContent = "Registrando...";
-          this.messageEl.innerHTML = "";
-
-          const productId = this.productSelect.value;
-          const productName = this.productSelect.options[this.productSelect.selectedIndex]?.text || productId;
-          const quantity = parseInt(this.quantityInput.value) || 0;
-          const unitPrice = this.priceInput.value;
-          const currencyCode = this.currencySelect.value;
-          const comment = this.commentInput.value;
-
-          try {
-            const payload = {
-              product_id: productId,
-              quantity: quantity,
-              unit_price: unitPrice,
-              currency_code: currencyCode,
-              comment: comment,
-            };
-            await ApiClient.post("/api/v1/sales", payload);
-
-            // Re-fetch products (stock updated) and transactions
-            const [prodRes, txRes] = await Promise.all([
-              ApiClient.get("/api/v1/products"),
-              ApiClient.get("/api/v1/transactions"),
-            ]);
-            App.state.products = prodRes.data;
-            App.state.transactions = txRes.data;
-
-            // Refresh InventoryView stock display
-            if (typeof InventoryView !== "undefined") {
-              InventoryView.render();
-            }
-
-            this.messageEl.innerHTML = `<div class="text-emerald-500 text-sm font-bold">✓ Venta registrada exitosamente.</div>`;
-            document.getElementById("sales-form").reset();
-            this.populateSelects();
-          } catch (error) {
-            this.messageEl.innerHTML = `<div class="text-red-500 text-sm">${error.message}</div>`;
-          } finally {
-            this.submitBtn.disabled = false;
-            this.submitBtn.textContent = "Registrar Venta";
-          }
-        },
-      };
-
-      // Boot the Application (Minor HTML fix for the status dot)
-      document.addEventListener("DOMContentLoaded", () => {
-        // Add IDs to header status elements so App.init() can target them
-        const statusDot = document.querySelector(".bg-emerald-500");
-        if (statusDot) statusDot.id = "sys-status-dot";
-        const statusText = document.querySelector(
-          ".text-zinc-300.tracking-wider",
-        );
-        if (statusText) statusText.id = "sys-status-text";
-
-        App.init();
-      });
-    </script>
-  </body>
-</html>
+        <div class="bg-black border border-emerald-900/30 p-4 rounded-lg">
+          <span class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1">Total Ventas</span>
+          <span id="metric-sales" class="text-xl font-mono text-emerald-400">Loading...</span>
+        </div>
+        <div class="bg-black border border-cyber-500/30 p-4 rounded-lg relative overflow-hidden group">
+          <div class="absolute inset-0 bg-emerald-500/5 group-hover:bg-emerald-500/10 transition-colors"></div>
+          <span class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1 relative z-10">Ganancia Neta</span>
+          <span id="metric-profit" class="text-2xl font-bold font-mono text-white relative z-10">Loading...</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 mb-8 shadow-2xl">
+      <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>💱</span> Currency Management</h3>
+      <form id="config-currency-form" class="space-y-4 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Code</label>
+            <input type="text" id="cur-code" maxlength="3" required placeholder="USD" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono uppercase focus:border-emerald-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Name</label>
+            <input type="text" id="cur-name" required placeholder="US Dollar" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Symbol</label>
+            <input type="text" id="cur-symbol" required placeholder="$" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+          </div>
+        </div>
+        <button type="submit" id="config-currency-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">Add Currency</button>
+      </form>
+      <div id="config-currency-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+    </div>
+
+    <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 mb-8 shadow-2xl">
+      <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>📈</span> Exchange Rates</h3>
+      <form id="config-rate-form" class="space-y-4 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Currency</label>
+            <select id="rate-currency-code" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"></select>
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Rate</label>
+            <input type="number" step="0.000001" id="rate-value" required placeholder="1.000000" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+          </div>
+        </div>
+        <button type="submit" id="config-rate-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">Add Rate</button>
+      </form>
+      <div id="config-rates-list" class="grid gap-2"></div>
+    </div>
+
+    <div class="mb-6">
+      <h2 class="text-2xl font-light text-white">System <strong class="font-bold text-emerald-500">Settings</strong></h2>
+      <p class="text-zinc-500 text-sm">Security and data management.</p>
+    </div>
+    <div class="space-y-6">
+      <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
+        <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>🔒</span> Security</h3>
+        <form id="config-pwd-form" class="space-y-4">
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">New PIN</label>
+            <input type="password" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Confirm PIN</label>
+            <input type="password" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+          </div>
+          <button type="submit" class="w-full border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white font-bold text-sm px-4 py-2 rounded transition-colors">Update Credentials</button>
+        </form>
+      </div>
+      <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
+        <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>💾</span> Data Backup</h3>
+        <p class="text-xs text-zinc-500 mb-4">Export all currencies, products, and transactions to a secure JSON file.</p>
+        <button id="config-export-btn" class="w-full bg-transparent border border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-black font-bold uppercase tracking-widest text-sm py-3 rounded transition-all shadow-[0_0_10px_rgba(16,185,129,0.1)]">Download JSON Backup</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Reports View -->
+  <section id="view-reports" class="hidden w-full">
+    <div class="mb-6">
+      <h2 class="text-2xl font-light text-white">Transaction <strong class="font-bold text-emerald-500">Reports</strong></h2>
+      <p class="text-zinc-500 text-sm">Daily ledger with multi-currency conversion.</p>
+    </div>
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+      <div class="relative">
+        <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Filter by Date</label>
+        <input type="date" id="report-date-filter" class="bg-black border border-zinc-800 rounded px-4 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+      </div>
+      <div class="flex items-end">
+        <button id="export-csv-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">Export CSV</button>
+      </div>
+    </div>
+    <div class="hidden md:block overflow-x-auto w-full bg-black border border-zinc-800 rounded-xl">
+      <table class="w-full text-left text-sm whitespace-nowrap">
+        <thead class="bg-zinc-900 border-b border-zinc-800 text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest">
+          <tr>
+            <th class="px-4 py-4">Time</th>
+            <th class="px-4 py-4">Product Name</th>
+            <th class="px-4 py-4">Type</th>
+            <th class="px-4 py-4">Qty</th>
+            <th class="px-4 py-4">Unit Price (Original)</th>
+            <th class="px-4 py-4">Converted Values</th>
+          </tr>
+        </thead>
+        <tbody id="report-table-body" class="divide-y divide-zinc-800/50 text-zinc-300"></tbody>
+      </table>
+    </div>
+    <div id="report-cards-container" class="grid grid-cols-1 gap-4 md:hidden w-full mt-4"></div>
+  </section>
+
+  <!-- Sales View -->
+  <section id="view-sales" class="hidden w-full">
+    <div class="mb-6">
+      <h2 class="text-2xl font-light text-white"><strong class="font-bold text-emerald-500">Registrar</strong> Venta</h2>
+      <p class="text-zinc-500 text-sm">Registra las ventas diarias y controla el inventario.</p>
+    </div>
+    <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 shadow-2xl">
+      <form id="sales-form" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Producto</label>
+            <input type="text" id="sales-product-search" placeholder="Buscar producto..." class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none mb-2" />
+            <select id="sales-product" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"></select>
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Cantidad</label>
+            <input type="number" id="sales-quantity" required min="1" step="1" placeholder="1" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Precio Unitario</label>
+            <input type="number" id="sales-unit-price" required min="0" step="0.01" placeholder="0.00" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Moneda</label>
+            <select id="sales-currency" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"></select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Comentario <span class="text-zinc-600">(opcional)</span></label>
+          <textarea id="sales-comment" rows="2" placeholder="Notas sobre la venta..." class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none resize-none"></textarea>
+        </div>
+        <button type="submit" id="sales-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">Registrar Venta</button>
+        <div id="sales-message"></div>
+      </form>
+    </div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/components.js') }}"></script>
+<script src="{{ url_for('static', filename='js/api-client.js') }}"></script>
+<script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
+<script src="{{ url_for('static', filename='js/inventory.js') }}"></script>
+<script src="{{ url_for('static', filename='js/config.js') }}"></script>
+<script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sales.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  App.init();
+});
+</script>
+{% endblock %}

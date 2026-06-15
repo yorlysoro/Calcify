@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Frontend:** Monolith refactored into 7 CSS files by view (`static/css/base.css`, `login.css`, `calculator.css`, `inventory.css`, `config.css`, `reports.css`, `sales.css`) — loaded selectively via `{% block extra_css %}` from `base.html`.
+- **Frontend:** Monolith refactored into 10 JS plain scripts (no ES modules) exposing global vars for `onclick` HTML compatibility: `utils.js`, `components.js`, `api-client.js`, `app.js`, `login.js`, `calculator.js`, `inventory.js`, `config.js`, `reports.js`, `sales.js`.
+- **Frontend:** `presentation/templates/base.html` — Jinja2 base template with blocks `title`, `body_class`, `content`, `scripts`, `extra_css`. Both `login.html` and `index.html` now `{% extends "base.html" %}`.
+- **Frontend:** Tailwind CSS local build via npm (`package.json`, `tailwind.config.js`, `static/src/input.css` → `static/dist/tailwind.css` via `npm run build:css`). Custom cyberpunk theme (Orbitron/Fira Code fonts, cyber-* colors).
+- **Frontend:** `presentation/__init__.py` added to fix package resolution.
+- **Testing:** Jest + jsdom frontend test infrastructure (`tests/frontend/jest.config.js`, `setup.js`, `__mocks__/styleMock.js`) with 78 defensive tests across 9 suites (`utils.test.js`, `api-client.test.js`, `login.test.js`, `calculator.test.js`, `inventory.test.js`, `config.test.js`, `reports.test.js`, `sales.test.js`, `app.test.js`).
+- **Testing:** Indirect eval `(0, eval)(code)` pattern for injecting plain JS scripts into Jest global scope (no `import`/`export` needed).
+- **Ops:** `.gitignore` — added `node_modules/`, `.vscode/`, `.idea/`, `.DS_Store`, `Thumbs.db`.
+- **Docs:** `estructura_calcify.txt` — added frontend architecture section (CSS/JS/Tailwind/test details), updated directory tree with `static/`, `tests/frontend/`, `package.json`, `tailwind.config.js`.
+- **Docs:** `AGENTS.md` — added frontend key files, conventions (plain JS, CSS-per-view, Tailwind local build, indirect eval), and 5 new design patterns (SPA Bootstrap, Module-as-View, Indirect Eval, CSS-per-View, Defensive JS).
+
 - **Infrastructure:** Alembic stale revision recovery — `bootstrap_migrations` now detects `CommandError: Can't locate revision`, drops the stale `alembic_version` row, creates a baseline migration, and re-stamps the DB (`infrastructure/database/auto_migrate.py:200-210`).
 - **Infrastructure:** `pytest-cov==6.1.1` added to `requirements.txt` for test coverage measurement.
 - **Testing:** 17 new integration tests for routes + auth, raising total from 91 to 108 tests (`tests/presentation/test_routes.py`).

@@ -1,214 +1,40 @@
-<!--
-  BSD 3-Clause License
+{% extends "base.html" %}
+{% block title %}Calcify | Terminal Access{% endblock %}
+{% block body_class %}bg-zinc-950 text-gray-300 h-screen flex items-center justify-center p-4 selection:bg-cyber-500 selection:text-black font-sans{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+{% endblock %}
+{% block content %}
+<div class="w-full max-w-sm bg-black border border-zinc-800 rounded-lg shadow-2xl p-8 relative overflow-hidden group">
+  <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyber-500 to-transparent opacity-40 group-hover:opacity-100 transition-opacity duration-500"></div>
 
-  Copyright (c) 2026, yorlysoro
+  <div class="text-center mb-8">
+    <h1 class="text-2xl font-bold tracking-[0.2em] text-white uppercase">Calcify</h1>
+    <p class="text-[0.65rem] text-zinc-500 mt-2 font-mono tracking-widest uppercase">Authorized Personnel Only</p>
+  </div>
 
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
-
-  1. Redistributions of source code must retain the above copyright notice, this
-     list of conditions and the following disclaimer.
-
-  2. Redistributions in binary form must reproduce the above copyright notice,
-     this list of conditions and the following disclaimer in the documentation
-     and/or other materials provided with the distribution.
-
-  3. Neither the name of the copyright holder nor the names of its
-     contributors may be used to endorse or promote products derived from
-     this software without specific prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
--->
-
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Calcify | Terminal Access</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              cyber: {
-                500: "#00f0ff", // Neon Cyan
-                600: "#00c3cf",
-              },
-            },
-          },
-        },
-      };
-    </script>
-    <style>
-      /* Prevents Chrome autofill from ruining the dark mode styling */
-      input:-webkit-autofill,
-      input:-webkit-autofill:hover,
-      input:-webkit-autofill:focus,
-      input:-webkit-autofill:active {
-        -webkit-box-shadow: 0 0 0 30px #18181b inset !important;
-        -webkit-text-fill-color: white !important;
-        transition: background-color 5000s ease-in-out 0s;
-      }
-    </style>
-  </head>
-  <body
-    class="bg-zinc-950 text-gray-300 h-screen flex items-center justify-center p-4 selection:bg-cyber-500 selection:text-black font-sans"
-  >
-    <div
-      class="w-full max-w-sm bg-black border border-zinc-800 rounded-lg shadow-2xl p-8 relative overflow-hidden group"
-    >
-      <div
-        class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyber-500 to-transparent opacity-40 group-hover:opacity-100 transition-opacity duration-500"
-      ></div>
-
-      <div class="text-center mb-8">
-        <h1 class="text-2xl font-bold tracking-[0.2em] text-white uppercase">
-          Calcify
-        </h1>
-        <p
-          class="text-[0.65rem] text-zinc-500 mt-2 font-mono tracking-widest uppercase"
-        >
-          Authorized Personnel Only
-        </p>
-      </div>
-
-      <form id="loginForm" class="space-y-6">
-        <div class="relative">
-          <label for="pin" class="sr-only">Access PIN</label>
-          <input
-            type="password"
-            name="pin"
-            id="pin"
-            required
-            placeholder="••••••••"
-            autocomplete="current-password"
-            class="w-full bg-zinc-900 border border-zinc-800 text-white text-center tracking-[0.5em] font-mono rounded px-4 py-3 focus:outline-none focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500 focus:shadow-[0_0_15px_rgba(0,240,255,0.2)] transition-all duration-300"
-          />
-        </div>
-
-        <div
-          id="errorContainer"
-          class="hidden bg-red-950/20 border border-red-900/50 rounded py-2 px-3 text-center transition-all duration-300"
-        >
-          <p
-            id="errorMessage"
-            class="text-xs text-red-500 font-mono tracking-wide uppercase"
-          >
-            Access Denied
-          </p>
-        </div>
-
-        <button
-          type="submit"
-          id="submitBtn"
-          class="w-full bg-transparent border border-cyber-500 text-cyber-500 hover:bg-cyber-500 hover:text-black font-bold uppercase tracking-widest text-sm py-3 px-4 rounded transition-all duration-300 shadow-[0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.3)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-cyber-500 flex justify-center items-center gap-2"
-        >
-          <span id="btnText">Initialize Session</span>
-          <svg
-            id="loadingSpinner"
-            class="hidden animate-spin h-4 w-4 text-current"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            ></circle>
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-        </button>
-      </form>
+  <form id="loginForm" class="space-y-6">
+    <div class="relative">
+      <label for="pin" class="sr-only">Access PIN</label>
+      <input type="password" name="pin" id="pin" required placeholder="••••••••" autocomplete="current-password"
+        class="w-full bg-zinc-900 border border-zinc-800 text-white text-center tracking-[0.5em] font-mono rounded px-4 py-3 focus:outline-none focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500 focus:shadow-[0_0_15px_rgba(0,240,255,0.2)] transition-all duration-300" />
     </div>
 
-    <script>
-      document
-        .getElementById("loginForm")
-        .addEventListener("submit", async (e) => {
-          e.preventDefault(); // Stop native form submission
+    <div id="errorContainer" class="hidden bg-red-950/20 border border-red-900/50 rounded py-2 px-3 text-center transition-all duration-300">
+      <p id="errorMessage" class="text-xs text-red-500 font-mono tracking-wide uppercase">Access Denied</p>
+    </div>
 
-          const pinInput = document.getElementById("pin").value;
-          const errorContainer = document.getElementById("errorContainer");
-          const errorMessage = document.getElementById("errorMessage");
-          const btnText = document.getElementById("btnText");
-          const spinner = document.getElementById("loadingSpinner");
-          const submitBtn = document.getElementById("submitBtn");
-
-          // Reset UI State
-          errorContainer.classList.add("hidden");
-          submitBtn.disabled = true;
-          btnText.textContent = "Decrypting...";
-          spinner.classList.remove("hidden");
-
-          try {
-            // Send payload matching the exact JSON structure our Flask API expects
-            const response = await fetch("/login", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ pin: pinInput }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-              // Success! Redirect to the main dashboard or root
-              btnText.textContent = "Access Granted";
-              submitBtn.classList.replace(
-                "border-cyber-500",
-                "border-green-500",
-              );
-              submitBtn.classList.replace("text-cyber-500", "text-green-500");
-
-              setTimeout(() => {
-                window.location.href = "/";
-              }, 800);
-            } else {
-              // Trigger visual error feedback
-              throw new Error(data.error || "Authentication Failed");
-            }
-          } catch (error) {
-            // Restore UI and show error
-            errorMessage.textContent = error.message;
-            errorContainer.classList.remove("hidden");
-
-            // Shake effect for the input field
-            const inputEl = document.getElementById("pin");
-            inputEl.classList.add("translate-x-1", "border-red-500");
-            setTimeout(() => inputEl.classList.remove("translate-x-1"), 100);
-            setTimeout(() => inputEl.classList.add("-translate-x-1"), 200);
-            setTimeout(
-              () =>
-                inputEl.classList.remove("-translate-x-1", "border-red-500"),
-              300,
-            );
-          } finally {
-            submitBtn.disabled = false;
-            btnText.textContent = "Initialize Session";
-            spinner.classList.add("hidden");
-            document.getElementById("pin").value = ""; // Clear password field
-            document.getElementById("pin").focus();
-          }
-        });
-    </script>
-  </body>
-</html>
+    <button type="submit" id="submitBtn"
+      class="w-full bg-transparent border border-cyber-500 text-cyber-500 hover:bg-cyber-500 hover:text-black font-bold uppercase tracking-widest text-sm py-3 px-4 rounded transition-all duration-300 shadow-[0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.3)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-cyber-500 flex justify-center items-center gap-2">
+      <span id="btnText">Initialize Session</span>
+      <svg id="loadingSpinner" class="hidden animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    </button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}
