@@ -10,7 +10,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+/dist/
 downloads/
 eggs/
 .eggs/
@@ -220,6 +220,9 @@ schema_trace.sql
 
 # Node / npm
 node_modules/
+
+# Excepción para Tailwind compilado (necesario en producción sin build step)
+!/static/dist/tailwind.css
 
 # IDEs
 .vscode/
