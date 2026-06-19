@@ -32,7 +32,7 @@ var ConfigView = {
         CalculatorView.init();
         InventoryView.initModal();
       } catch (error) {
-        alert("Error adding currency: " + error.message);
+        alert(__("error_adding_currency") + " " + error.message);
       } finally {
         btn.disabled = false;
       }
@@ -56,7 +56,7 @@ var ConfigView = {
         ConfigView.renderRates();
         CalculatorView.render();
       } catch (error) {
-        alert("Error adding rate: " + error.message);
+        alert(__("error_adding_rate") + " " + error.message);
       } finally {
         btn.disabled = false;
       }
@@ -77,9 +77,9 @@ var ConfigView = {
         '<div class="font-mono font-bold text-emerald-400 text-sm">' + cur.code + '</div>' +
         '<div class="text-xs text-zinc-500 truncate">' + cur.name + '</div>';
       if (cur.is_main) {
-        inner += '<div class="text-[0.6rem] uppercase tracking-widest text-amber-500 mt-1">★ Main</div>';
+        inner += '<div class="text-[0.6rem] uppercase tracking-widest text-amber-500 mt-1">' + __("main") + '</div>';
       } else {
-        inner += '<button onclick="ConfigView.setMainCurrency(\'' + cur.code + '\')" class="text-[0.6rem] uppercase tracking-widest text-emerald-500 hover:text-emerald-400 mt-1">Set Base</button>';
+        inner += '<button onclick="ConfigView.setMainCurrency(\'' + cur.code + '\')" class="text-[0.6rem] uppercase tracking-widest text-emerald-500 hover:text-emerald-400 mt-1">' + __("set_base") + '</button>';
       }
       card.innerHTML = inner;
       container.appendChild(card);
@@ -94,7 +94,7 @@ var ConfigView = {
       this.renderCurrencies();
       CalculatorView.init();
     } catch (error) {
-      alert("Error setting base currency: " + error.message);
+      alert(__("error_setting_base") + " " + error.message);
     }
   },
 
@@ -102,7 +102,7 @@ var ConfigView = {
     var container = document.getElementById("config-rates-list");
     container.innerHTML = "";
     if (App.state.rates.length === 0) {
-      container.innerHTML = '<div class="text-zinc-600 text-sm text-center py-4">No rates configured.</div>';
+      container.innerHTML = '<div class="text-zinc-600 text-sm text-center py-4">' + __("no_rates") + '</div>';
       return;
     }
     App.state.rates.forEach(function(r) {
@@ -110,13 +110,13 @@ var ConfigView = {
       row.className = "bg-black border border-zinc-800 rounded-lg px-4 py-3 flex items-center justify-between";
       row.innerHTML = '<div><span class="font-mono font-bold text-emerald-400 text-sm">' + r.currency_code + '</span>' +
         '<span class="font-mono text-white text-sm ml-3">' + r.rate + '</span></div>' +
-        '<button onclick="ConfigView.deleteRate(\'' + r.id + '\')" class="text-red-500 hover:text-red-400 text-xs font-bold uppercase tracking-wider">Delete</button>';
+        '<button onclick="ConfigView.deleteRate(\'' + r.id + '\')" class="text-red-500 hover:text-red-400 text-xs font-bold uppercase tracking-wider">' + __("delete_rate") + '</button>';
       container.appendChild(row);
     });
   },
 
   deleteRate: async function(id) {
-    if (!confirm("Delete this exchange rate?")) return;
+    if (!confirm(__("delete_confirm"))) return;
     try {
       await ApiClient.delete("/api/v1/rates/" + id);
       var res = await ApiClient.get("/api/v1/rates/latest");
@@ -124,7 +124,7 @@ var ConfigView = {
       this.renderRates();
       CalculatorView.render();
     } catch (error) {
-      alert("Error deleting rate: " + error.message);
+      alert(__("error_deleting_rate") + " " + error.message);
     }
   },
 };

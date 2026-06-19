@@ -60,14 +60,14 @@ describe("CalculatorView", () => {
     App = { state: { currencies: [{ code: "USD", is_main: false }], products: [], rates: [], transactions: [] } };
     loadGlobal("calculator");
     CalculatorView.init();
-    expect(document.getElementById("calc-results").innerHTML).toContain("Please set a base currency");
+    expect(document.getElementById("calc-results").innerHTML).toContain("please_set_base");
   });
 
   it("handles empty currencies array", () => {
     App = { state: { currencies: [], products: [], rates: [], transactions: [] } };
     loadGlobal("calculator");
     CalculatorView.init();
-    expect(document.getElementById("calc-results").innerHTML).toContain("Please set a base currency");
+    expect(document.getElementById("calc-results").innerHTML).toContain("please_set_base");
   });
 
   it("renders zero amount with correct currency symbols", () => {

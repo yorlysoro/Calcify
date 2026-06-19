@@ -63,7 +63,7 @@ describe("App Controller", () => {
 
     await App.init();
     expect(App.state.currencies).toEqual([{ code: "USD", is_main: true }]);
-    expect(document.getElementById("sys-status-text").textContent).toBe("Online");
+    expect(document.getElementById("sys-status-text").textContent).toBe("online");
   });
 
   it("handles API failure gracefully on init", async () => {

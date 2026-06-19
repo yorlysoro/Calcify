@@ -56,7 +56,7 @@ var SalesView = {
       placeholder.disabled = true;
       placeholder.selected = true;
       placeholder.dataset.placeholder = "true";
-      placeholder.textContent = "\u2014 Sin resultados \u2014";
+      placeholder.textContent = __("no_results");
       this.productSelect.appendChild(placeholder);
     }
   },
@@ -64,7 +64,7 @@ var SalesView = {
   handleSubmit: async function(e) {
     e.preventDefault();
     this.submitBtn.disabled = true;
-    this.submitBtn.textContent = "Registrando...";
+    this.submitBtn.textContent = __("registering");
     this.messageEl.innerHTML = "";
 
     var productId = this.productSelect.value;
@@ -94,14 +94,14 @@ var SalesView = {
         InventoryView.render();
       }
 
-      this.messageEl.innerHTML = '<div class="text-emerald-500 text-sm font-bold">\u2713 Venta registrada exitosamente.</div>';
+      this.messageEl.innerHTML = '<div class="text-emerald-500 text-sm font-bold">' + __("sale_registered") + '</div>';
       document.getElementById("sales-form").reset();
       this.populateSelects();
     } catch (error) {
       this.messageEl.innerHTML = '<div class="text-red-500 text-sm">' + error.message + '</div>';
     } finally {
       this.submitBtn.disabled = false;
-      this.submitBtn.textContent = "Registrar Venta";
+      this.submitBtn.textContent = __("register_sale");
     }
   },
 };

@@ -10,23 +10,23 @@
 
   <div class="text-center mb-8">
     <h1 class="text-2xl font-bold tracking-[0.2em] text-white uppercase">Calcify</h1>
-    <p class="text-[0.65rem] text-zinc-500 mt-2 font-mono tracking-widest uppercase">Authorized Personnel Only</p>
+    <p class="text-[0.65rem] text-zinc-500 mt-2 font-mono tracking-widest uppercase">{{ _("Authorized Personnel Only") }}</p>
   </div>
 
   <form id="loginForm" class="space-y-6">
     <div class="relative">
-      <label for="pin" class="sr-only">Access PIN</label>
+      <label for="pin" class="sr-only">{{ _("Access PIN") }}</label>
       <input type="password" name="pin" id="pin" required placeholder="••••••••" autocomplete="current-password"
         class="w-full bg-zinc-900 border border-zinc-800 text-white text-center tracking-[0.5em] font-mono rounded px-4 py-3 focus:outline-none focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500 focus:shadow-[0_0_15px_rgba(0,240,255,0.2)] transition-all duration-300" />
     </div>
 
     <div id="errorContainer" class="hidden bg-red-950/20 border border-red-900/50 rounded py-2 px-3 text-center transition-all duration-300">
-      <p id="errorMessage" class="text-xs text-red-500 font-mono tracking-wide uppercase">Access Denied</p>
+      <p id="errorMessage" class="text-xs text-red-500 font-mono tracking-wide uppercase">{{ _("Access Denied") }}</p>
     </div>
 
     <button type="submit" id="submitBtn"
       class="w-full bg-transparent border border-cyber-500 text-cyber-500 hover:bg-cyber-500 hover:text-black font-bold uppercase tracking-widest text-sm py-3 px-4 rounded transition-all duration-300 shadow-[0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.3)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-cyber-500 flex justify-center items-center gap-2">
-      <span id="btnText">Initialize Session</span>
+      <span id="btnText">{{ _("Initialize Session") }}</span>
       <svg id="loadingSpinner" class="hidden animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -36,5 +36,6 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 <script src="{{ url_for('static', filename='js/login.js') }}"></script>
 {% endblock %}

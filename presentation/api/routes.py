@@ -35,6 +35,7 @@ from uuid import UUID, uuid4
 from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, request, jsonify, g, Response
+from flask_babel import _
 
 # Pure Domain Imports
 from domain.models import Product, Currency, Transaction, CurrencyRate
@@ -65,7 +66,7 @@ def handle_unhandled_error(error: Exception) -> Tuple[Response, int]:
     """Global exception handler for all unhandled API errors."""
     traceback.print_exc()
     logger.error("Unhandled exception:\n%s", traceback.format_exc())
-    return jsonify({"error": "Internal Server Error", "message": str(error)}), 500
+    return jsonify({"error": _("Internal Server Error"), "message": str(error)}), 500
 
 
 @api_bp.route("/currencies", methods=["GET"])
@@ -74,15 +75,11 @@ def get_currencies() -> Tuple[Response, int]:
     """
     Retrieves all available currencies from the domain.
     """
-    # 1. Dependency Injection via Flask's global request context 'g'
     repo = SqlAlchemyCurrencyRepository(session=g.db_session)
 
     try:
-        # 2. Fetch Pure Domain Entities
         currencies: List[Currency] = repo.get_all()
 
-        # 3. Serialization: Domain Entities to JSON-serializable dictionaries
-        # Using list comprehension for O(N) efficient mapping
         response_data: List[Dict[str, Any]] = [
             {"code": c.code, "name": c.name, "symbol": c.symbol, "is_main": c.is_main}
             for c in currencies
@@ -93,7 +90,7 @@ def get_currencies() -> Tuple[Response, int]:
     except Exception as e:
         logger.error(f"Failed to fetch currencies: {str(e)}")
         return (
-            jsonify({"error": "Internal server error while fetching currencies."}),
+            jsonify({"error": _("Internal server error while fetching currencies.")}),
             500,
         )
 
@@ -107,7 +104,7 @@ def create_currency() -> Tuple[Response, int]:
     """
     payload: Optional[Dict[str, Any]] = request.get_json()
     if not payload:
-        return jsonify({"error": "Invalid or missing JSON payload."}), 400
+        return jsonify({"error": _("Invalid or missing JSON payload.")}), 400
 
     repo = SqlAlchemyCurrencyRepository(session=g.db_session)
 
@@ -119,7 +116,7 @@ def create_currency() -> Tuple[Response, int]:
 
         existing: Optional[Currency] = repo.get_by_code(code)
         if existing is not None:
-            return jsonify({"error": f"Currency {code} already exists."}), 409
+            return jsonify({"error": _("Currency %(code)s already exists.", code=code)}), 409
 
         new_currency: Currency = Currency(
             code=code, name=name, symbol=symbol, is_main=is_main
@@ -130,7 +127,7 @@ def create_currency() -> Tuple[Response, int]:
 
         return (
             jsonify({
-                "message": "Currency created successfully.",
+                "message": _("Currency created successfully."),
                 "data": {
                     "code": new_currency.code,
                     "name": new_currency.name,
@@ -142,12 +139,12 @@ def create_currency() -> Tuple[Response, int]:
         )
 
     except KeyError as e:
-        return jsonify({"error": f"Missing required field: {str(e)}"}), 400
+        return jsonify({"error": _("Missing required field: %(field)s", field=str(e))}), 400
     except Exception as e:
         g.db_session.rollback()
         logger.error(f"Failed to create currency: {str(e)}")
         return (
-            jsonify({"error": "Failed to process the currency creation request."}),
+            jsonify({"error": _("Failed to process the currency creation request.")}),
             500,
         )
 
@@ -161,13 +158,11 @@ def create_product() -> Tuple[Response, int]:
     """
     payload: Optional[Dict[str, Any]] = request.get_json()
     if not payload:
-        return jsonify({"error": "Invalid or missing JSON payload."}), 400
+        return jsonify({"error": _("Invalid or missing JSON payload.")}), 400
 
     repo = SqlAlchemyProductRepository(session=g.db_session)
 
     try:
-        # 1. Edge Validation & Type Casting
-        # We strictly convert incoming generic types to our Domain constraints.
         product_id = UUID(payload["id"])
         name = str(payload["name"])
         cost_price = Decimal(str(payload["cost_price"]))
@@ -176,7 +171,6 @@ def create_product() -> Tuple[Response, int]:
         category = str(payload.get("category", "Uncategorized"))
         stock_quantity = int(payload.get("stock_quantity", 0))
 
-        # 2. Instantiate Pure Domain Entity
         new_product = Product(
             id=product_id,
             name=name,
@@ -187,15 +181,13 @@ def create_product() -> Tuple[Response, int]:
             stock_quantity=stock_quantity,
         )
 
-        # 3. Persistence (Unit of Work)
         repo.save(new_product)
         g.db_session.commit()
 
-        # 4. Response formatting
         return (
             jsonify(
                 {
-                    "message": "Product created successfully.",
+                    "message": _("Product created successfully."),
                     "data": {"id": str(new_product.id)},
                 }
             ),
@@ -203,23 +195,19 @@ def create_product() -> Tuple[Response, int]:
         )
 
     except KeyError as e:
-        # Catching missing dictionary keys
-        return jsonify({"error": f"Missing required field: {str(e)}"}), 400
+        return jsonify({"error": _("Missing required field: %(field)s", field=str(e))}), 400
     except ValueError:
-        # Catching invalid UUID formats
-        return jsonify({"error": "Invalid UUID format provided for 'id'."}), 400
+        return jsonify({"error": _("Invalid UUID format provided for 'id'.")}), 400
     except InvalidOperation:
-        # Catching invalid decimal formats (e.g., passing letters instead of numbers)
         return (
-            jsonify({"error": "Financial values must be valid decimal numbers."}),
+            jsonify({"error": _("Financial values must be valid decimal numbers.")}),
             400,
         )
     except Exception as e:
-        # Catch-all and rollback for database or unforeseen domain errors
         g.db_session.rollback()
         logger.error(f"Failed to create product: {str(e)}")
         return (
-            jsonify({"error": "Failed to process the product creation request."}),
+            jsonify({"error": _("Failed to process the product creation request.")}),
             500,
         )
 
@@ -235,13 +223,11 @@ def get_product(product_id: str) -> Tuple[Response, int]:
     try:
         parsed_id = UUID(product_id)
 
-        # Domain boundary check
         product: Optional[Product] = repo.get_by_id(parsed_id)
 
         if not product:
-            return jsonify({"error": f"Product with ID {product_id} not found."}), 404
+            return jsonify({"error": _("Product with ID %(id)s not found.", id=product_id)}), 404
 
-        # Execute Domain Logic seamlessly
         calculated_sale_price: Decimal = product.calculate_sale_price()
 
         return (
@@ -255,7 +241,7 @@ def get_product(product_id: str) -> Tuple[Response, int]:
                         "margin_percentage": str(product.margin_percentage),
                         "calculated_sale_price": str(
                             calculated_sale_price
-                        ),  # Serialized to string to prevent float precision loss in JSON
+                        ),
                         "category": product.category,
                         "stock_quantity": product.stock_quantity,
                     }
@@ -266,12 +252,13 @@ def get_product(product_id: str) -> Tuple[Response, int]:
 
     except ValueError:
         return (
-            jsonify({"error": "Invalid product ID format. Must be a valid UUID."}),
+            jsonify({"error": _("Invalid product ID format. Must be a valid UUID.")}),
             400,
         )
     except Exception as e:
         logger.error(f"Failed to fetch product {product_id}: {str(e)}")
-        return jsonify({"error": "Internal server error."}), 500
+        return jsonify({"error": _("Internal server error.")}), 500
+
 
 @api_bp.route("/products/<product_id>", methods=["PUT"])
 @login_required
@@ -287,11 +274,11 @@ def update_product(product_id: str) -> Tuple[Response, int]:
         parsed_id = UUID(product_id)
         product: Optional[Product] = repo.get_by_id(parsed_id)
         if not product:
-            return jsonify({"error": f"Product with ID {product_id} not found."}), 404
+            return jsonify({"error": _("Product with ID %(id)s not found.", id=product_id)}), 404
 
         payload: Optional[Dict[str, Any]] = request.get_json()
         if not payload:
-            return jsonify({"error": "Invalid or missing JSON payload."}), 400
+            return jsonify({"error": _("Invalid or missing JSON payload.")}), 400
 
         if "name" in payload:
             product.name = str(payload["name"])
@@ -310,7 +297,7 @@ def update_product(product_id: str) -> Tuple[Response, int]:
         g.db_session.commit()
 
         return jsonify({
-            "message": "Product updated successfully.",
+            "message": _("Product updated successfully."),
             "data": {
                 "id": str(product.id),
                 "name": product.name,
@@ -323,13 +310,14 @@ def update_product(product_id: str) -> Tuple[Response, int]:
         }), 200
 
     except ValueError:
-        return jsonify({"error": "Invalid product ID format. Must be a valid UUID."}), 400
+        return jsonify({"error": _("Invalid product ID format. Must be a valid UUID.")}), 400
     except InvalidOperation:
-        return jsonify({"error": "Financial values must be valid decimal numbers."}), 400
+        return jsonify({"error": _("Financial values must be valid decimal numbers.")}), 400
     except Exception as e:
         g.db_session.rollback()
         logger.error(f"Failed to update product {product_id}: {str(e)}")
-        return jsonify({"error": "Internal server error."}), 500
+        return jsonify({"error": _("Internal server error.")}), 500
+
 
 @api_bp.route("/products", methods=["GET"])
 @login_required
@@ -337,22 +325,20 @@ def get_products() -> Tuple[Response, int]:
     """
     Retrieves the entire product inventory.
     Protected endpoint: Requires active session.
-    
+
     Returns:
         A JSON list of products with safely serialized financial types.
     """
     repo = SqlAlchemyProductRepository(session=g.db_session)
-    
+
     try:
-        # 1. Fetch pure domain entities
         products: List[Product] = repo.get_all()
-        
-        # 2. Serialize Domain to JSON-friendly structures (O(N) mapping)
+
         response_data: List[Dict[str, Any]] = [
             {
                 "id": str(p.id),
                 "name": p.name,
-                "cost_price": str(p.cost_price), # Strict Decimal-to-String conversion
+                "cost_price": str(p.cost_price),
                 "cost_currency_code": p.cost_currency_code,
                 "margin_percentage": str(p.margin_percentage),
                 "category": p.category,
@@ -360,12 +346,13 @@ def get_products() -> Tuple[Response, int]:
             }
             for p in products
         ]
-        
+
         return jsonify({"data": response_data}), 200
-        
+
     except Exception:
         logger.error("Failed to fetch inventory products.")
-        return jsonify({"error": "Internal server error while fetching products."}), 500
+        return jsonify({"error": _("Internal server error while fetching products.")}), 500
+
 
 @api_bp.route("/transactions", methods=["POST"])
 @login_required
@@ -376,19 +363,17 @@ def create_transaction() -> Tuple[Response, int]:
     """
     payload = request.get_json()
     if not payload:
-        return jsonify({"error": "Invalid or missing JSON payload."}), 400
+        return jsonify({"error": _("Invalid or missing JSON payload.")}), 400
 
     tx_repo = SqlAlchemyTransactionRepository(session=g.db_session)
     prod_repo = SqlAlchemyProductRepository(session=g.db_session)
 
     try:
-        # Edge Validation & Type Casting
         product_id = UUID(payload["product_id"])
-        
-        # Referencial Integrity Check (Foreign Key Guard)
+
         if not prod_repo.get_by_id(product_id):
-            return jsonify({"error": f"Product {product_id} does not exist."}), 400
-            
+            return jsonify({"error": _("Product %(id)s does not exist.", id=product_id)}), 400
+
         new_tx = Transaction(
             id=uuid4(),
             product_id=product_id,
@@ -396,39 +381,37 @@ def create_transaction() -> Tuple[Response, int]:
             quantity=int(payload["quantity"]),
             unit_price=Decimal(str(payload["unit_price"])),
             currency_code=str(payload["currency_code"]),
-            created_at=datetime.now(timezone.utc) # Strict timezone awareness
+            created_at=datetime.now(timezone.utc)
         )
 
-        # Persistence (Unit of Work)
         tx_repo.save(new_tx)
         g.db_session.commit()
 
-        # Serialization Helper (Inline Mapping for O(1) response)
         serialized_tx = {
             "id": str(new_tx.id),
             "product_id": str(new_tx.product_id),
             "transaction_type": new_tx.transaction_type,
             "quantity": new_tx.quantity,
-            "unit_price": str(new_tx.unit_price), # Strict String casting
+            "unit_price": str(new_tx.unit_price),
             "currency_code": new_tx.currency_code,
             "created_at": new_tx.created_at.isoformat()
         }
 
         return jsonify({
-            "message": "Transaction recorded successfully.",
+            "message": _("Transaction recorded successfully."),
             "data": serialized_tx
         }), 201
 
     except KeyError as e:
-        return jsonify({"error": f"Missing required field: {str(e)}"}), 400
+        return jsonify({"error": _("Missing required field: %(field)s", field=str(e))}), 400
     except ValueError as e:
-        return jsonify({"error": f"Invalid data format: {str(e)}"}), 400
+        return jsonify({"error": _("Invalid data format: %(msg)s", msg=str(e))}), 400
     except InvalidOperation:
-        return jsonify({"error": "Financial values must be valid decimal numbers."}), 400
+        return jsonify({"error": _("Financial values must be valid decimal numbers.")}), 400
     except Exception as e:
         g.db_session.rollback()
         logger.error(f"Failed to record transaction: {str(e)}")
-        return jsonify({"error": "Failed to process the transaction request."}), 500
+        return jsonify({"error": _("Failed to process the transaction request.")}), 500
 
 
 @api_bp.route("/transactions", methods=["GET"])
@@ -440,11 +423,11 @@ def get_transactions() -> Tuple[Response, int]:
     Protected endpoint: Requires active session.
     """
     repo = SqlAlchemyTransactionRepository(session=g.db_session)
-    
+
     try:
         date_str: Optional[str] = request.args.get("date")
         transactions: List[Transaction] = repo.get_all()
-        
+
         if date_str:
             try:
                 parsed_date = datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -453,9 +436,8 @@ def get_transactions() -> Tuple[Response, int]:
                     if tx.created_at.date() == parsed_date
                 ]
             except ValueError:
-                return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
-        
-        # O(N) Serialization block
+                return jsonify({"error": _("Invalid date format. Use YYYY-MM-DD.")}), 400
+
         response_data: List[Dict[str, Any]] = [
             {
                 "id": str(tx.id),
@@ -468,12 +450,13 @@ def get_transactions() -> Tuple[Response, int]:
             }
             for tx in transactions
         ]
-        
+
         return jsonify({"data": response_data}), 200
-        
+
     except Exception as e:
         logger.error(f"Failed to fetch transaction ledger: {str(e)}")
-        return jsonify({"error": "Internal server error while fetching transactions."}), 500
+        return jsonify({"error": _("Internal server error while fetching transactions.")}), 500
+
 
 @api_bp.route("/rates", methods=["POST"])
 @login_required
@@ -484,7 +467,7 @@ def create_currency_rate() -> Tuple[Response, int]:
     """
     payload: Optional[Dict[str, Any]] = request.get_json()
     if not payload:
-        return jsonify({"error": "Invalid or missing JSON payload."}), 400
+        return jsonify({"error": _("Invalid or missing JSON payload.")}), 400
 
     repo = SqlAlchemyCurrencyRateRepository(session=g.db_session)
 
@@ -506,7 +489,7 @@ def create_currency_rate() -> Tuple[Response, int]:
 
         return (
             jsonify({
-                "message": "Rate created successfully.",
+                "message": _("Rate created successfully."),
                 "data": {
                     "id": str(new_rate.id),
                     "currency_code": new_rate.currency_code,
@@ -519,13 +502,13 @@ def create_currency_rate() -> Tuple[Response, int]:
         )
 
     except KeyError as e:
-        return jsonify({"error": f"Missing required field: {str(e)}"}), 400
+        return jsonify({"error": _("Missing required field: %(field)s", field=str(e))}), 400
     except InvalidOperation:
-        return jsonify({"error": "Rate must be a valid decimal number."}), 400
+        return jsonify({"error": _("Rate must be a valid decimal number.")}), 400
     except Exception as e:
         g.db_session.rollback()
         logger.error(f"Failed to create rate: {str(e)}")
-        return jsonify({"error": "Failed to process rate creation."}), 500
+        return jsonify({"error": _("Failed to process rate creation.")}), 500
 
 
 @api_bp.route("/rates/latest", methods=["GET"])
@@ -574,7 +557,7 @@ def convert_currency() -> Tuple[Response, int]:
     """
     payload: Optional[Dict[str, Any]] = request.get_json()
     if not payload:
-        return jsonify({"error": "Invalid or missing JSON payload."}), 400
+        return jsonify({"error": _("Invalid or missing JSON payload.")}), 400
 
     try:
         source_code: str = str(payload["source_currency_code"])
@@ -605,14 +588,14 @@ def convert_currency() -> Tuple[Response, int]:
         }), 200
 
     except KeyError as e:
-        return jsonify({"error": f"Missing required field: {str(e)}"}), 400
+        return jsonify({"error": _("Missing required field: %(field)s", field=str(e))}), 400
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except InvalidOperation:
-        return jsonify({"error": "Amount must be a valid decimal number."}), 400
+        return jsonify({"error": _("Amount must be a valid decimal number.")}), 400
     except Exception as e:
         logger.error(f"Failed to convert currency: {str(e)}")
-        return jsonify({"error": "Failed to process currency conversion."}), 500
+        return jsonify({"error": _("Failed to process currency conversion.")}), 500
 
 
 @api_bp.route("/rates/<rate_id>", methods=["DELETE"])
@@ -628,17 +611,17 @@ def delete_currency_rate(rate_id: str) -> Tuple[Response, int]:
         deleted: bool = repo.delete(parsed_id)
 
         if not deleted:
-            return jsonify({"error": f"Rate with ID {rate_id} not found."}), 404
+            return jsonify({"error": _("Rate with ID %(id)s not found.", id=rate_id)}), 404
 
         g.db_session.commit()
-        return jsonify({"message": "Rate deleted successfully."}), 200
+        return jsonify({"message": _("Rate deleted successfully.")}), 200
 
     except ValueError:
-        return jsonify({"error": "Invalid rate ID format. Must be a valid UUID."}), 400
+        return jsonify({"error": _("Invalid rate ID format. Must be a valid UUID.")}), 400
     except Exception as e:
         g.db_session.rollback()
         logger.error(f"Failed to delete rate {rate_id}: {str(e)}")
-        return jsonify({"error": "Internal server error."}), 500
+        return jsonify({"error": _("Internal server error.")}), 500
 
 
 @api_bp.route("/backup/export", methods=["GET"])
@@ -647,40 +630,36 @@ def export_backup() -> Response:
     """
     Triggers the generation of a full system backup.
     Protected endpoint: Requires active session.
-    
+
     Returns:
         A JSON file forced as a downloadable attachment via HTTP headers.
     """
-    # 1. Instantiate Repositories
     prod_repo = SqlAlchemyProductRepository(session=g.db_session)
     curr_repo = SqlAlchemyCurrencyRepository(session=g.db_session)
     tx_repo = SqlAlchemyTransactionRepository(session=g.db_session)
-    
-    # 2. Inject dependencies into the Use Case
+
     use_case = ExportBackupUseCase(
         product_repo=prod_repo,
         currency_repo=curr_repo,
         transaction_repo=tx_repo
     )
-    
+
     try:
-        # 3. Execute pure domain logic
         backup_data: Dict[str, Any] = use_case.execute()
-        
-        # 4. Format presentation (Flask Response)
+
         response: Response = jsonify(backup_data)
-        
-        # 5. Modify Headers to force file download
+
         date_str: str = datetime.now().strftime("%Y%m%d")
-        filename: str = f"respaldo_calculadora_{date_str}.json"
-        
+        filename: str = f"calcify_backup_{date_str}.json"
+
         response.headers["Content-Disposition"] = f"attachment; filename={filename}"
-        
+
         return response
 
     except Exception as e:
         logger.error(f"Failed to export system backup: {str(e)}")
-        return jsonify({"error": "Failed to generate system backup."}), 500
+        return jsonify({"error": _("Failed to generate system backup.")}), 500
+
 
 @api_bp.route("/sales", methods=["POST"])
 @login_required
@@ -688,7 +667,7 @@ def register_sale():
     """Register a sale: validate stock, create OUT transaction, reduce stock."""
     payload = request.get_json()
     if not payload:
-        return jsonify({"error": "Invalid or missing JSON payload."}), 400
+        return jsonify({"error": _("Invalid or missing JSON payload.")}), 400
 
     try:
         product_id = UUID(payload["product_id"])
@@ -711,7 +690,7 @@ def register_sale():
         g.db_session.commit()
 
         return jsonify({
-            "message": "Sale registered successfully.",
+            "message": _("Sale registered successfully."),
             "data": {
                 "transaction_id": str(result.transaction.id),
                 "product_id": str(result.transaction.product_id),
@@ -726,15 +705,15 @@ def register_sale():
         }), 201
 
     except KeyError as e:
-        return jsonify({"error": f"Missing required field: {str(e)}"}), 400
+        return jsonify({"error": _("Missing required field: %(field)s", field=str(e))}), 400
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except InvalidOperation:
-        return jsonify({"error": "Financial values must be valid decimal numbers."}), 400
+        return jsonify({"error": _("Financial values must be valid decimal numbers.")}), 400
     except Exception as e:
         g.db_session.rollback()
         logger.error(f"Failed to register sale: {str(e)}")
-        return jsonify({"error": "Failed to process the sale request."}), 500
+        return jsonify({"error": _("Failed to process the sale request.")}), 500
 
 
 @api_bp.route("/currencies/<string:code>/set_main", methods=["PUT"])
@@ -747,17 +726,17 @@ def set_main_currency(code: str) -> Tuple[Response, int]:
         code_upper: str = code.upper()
         existing: Optional[Currency] = repo.get_by_code(code_upper)
         if not existing:
-            return jsonify({"error": f"Currency {code_upper} not found."}), 404
+            return jsonify({"error": _("Currency %(code)s not found.", code=code_upper)}), 404
 
         repo.set_main(code_upper)
         g.db_session.commit()
 
-        return jsonify({"message": f"{code_upper} set as main currency."}), 200
+        return jsonify({"message": _("%(code)s set as main currency.", code=code_upper)}), 200
 
     except Exception as e:
         g.db_session.rollback()
         logger.error(f"Failed to set main currency {code}: {str(e)}")
-        return jsonify({"error": "Internal server error."}), 500
+        return jsonify({"error": _("Internal server error.")}), 500
 
 
 @api_bp.route("/products/<product_id>", methods=["DELETE"])
@@ -771,20 +750,18 @@ def delete_product(product_id: str) -> Tuple[Response, int]:
 
     try:
         parsed_id = UUID(product_id)
-        
-        # Cross the repository boundary
+
         deleted: bool = repo.delete(parsed_id)
-        
+
         if not deleted:
-            return jsonify({"error": f"Product with ID {product_id} not found."}), 404
-            
-        # Unit of Work: Commit the transaction
+            return jsonify({"error": _("Product with ID %(id)s not found.", id=product_id)}), 404
+
         g.db_session.commit()
-        return jsonify({"message": "Product deleted successfully."}), 200
+        return jsonify({"message": _("Product deleted successfully.")}), 200
 
     except ValueError:
-        return jsonify({"error": "Invalid product ID format. Must be a valid UUID."}), 400
+        return jsonify({"error": _("Invalid product ID format. Must be a valid UUID.")}), 400
     except Exception as e:
         g.db_session.rollback()
         logger.error(f"Failed to delete product {product_id}: {str(e)}")
-        return jsonify({"error": "Internal server error."}), 500
+        return jsonify({"error": _("Internal server error.")}), 500

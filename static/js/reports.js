@@ -24,8 +24,8 @@ var ReportView = {
       this.render();
     } catch (error) {
       console.error("Failed to fetch transactions:", error.message);
-      this.tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-zinc-500">Failed to load transactions.</td></tr>';
-      document.getElementById("report-cards-container").innerHTML = '<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">Failed to load transactions.</div>';
+      this.tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-zinc-500">' + __("failed_load_transactions") + '</td></tr>';
+      document.getElementById("report-cards-container").innerHTML = '<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">' + __("failed_load_transactions") + '</div>';
     }
   },
 
@@ -35,8 +35,8 @@ var ReportView = {
     cardsContainer.innerHTML = "";
 
     if (this.transactions.length === 0) {
-      this.tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-zinc-500">No transactions for this date.</td></tr>';
-      cardsContainer.innerHTML = '<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">No transactions for this date.</div>';
+      this.tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-zinc-500">' + __("no_transactions") + '</td></tr>';
+      cardsContainer.innerHTML = '<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">' + __("no_transactions") + '</div>';
       return;
     }
 
@@ -86,7 +86,7 @@ var ReportView = {
   exportCSV: function() {
     var date = this.dateInput.value;
     if (this.transactions.length === 0) {
-      alert("No data to export.");
+      alert(__("no_data_export"));
       return;
     }
 

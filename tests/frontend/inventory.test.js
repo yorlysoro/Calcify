@@ -76,7 +76,7 @@ describe("InventoryView", () => {
   it("shows empty state when no products", () => {
     loadGlobal("inventory");
     InventoryView.init();
-    expect(document.getElementById("inv-table-body").innerHTML).toContain("No products found");
+    expect(document.getElementById("inv-table-body").innerHTML).toContain("no_products");
   });
 
   it("shows empty state when search matches nothing", () => {
@@ -84,7 +84,7 @@ describe("InventoryView", () => {
     loadGlobal("inventory");
     InventoryView.init();
     InventoryView.render("NonExistentProductXYZ");
-    expect(document.getElementById("inv-table-body").innerHTML).toContain("No products found");
+    expect(document.getElementById("inv-table-body").innerHTML).toContain("no_products");
   });
 
   it("renders product with missing optional fields", () => {
@@ -108,6 +108,6 @@ describe("InventoryView", () => {
     loadGlobal("inventory");
     InventoryView.init();
     expect(() => { InventoryView.render(".*+?^${}()|[]\\"); }).not.toThrow();
-    expect(document.getElementById("inv-table-body").innerHTML).toContain("No products found");
+    expect(document.getElementById("inv-table-body").innerHTML).toContain("no_products");
   });
 });

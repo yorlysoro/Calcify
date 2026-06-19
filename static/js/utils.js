@@ -1,5 +1,8 @@
+if (typeof __locale === "undefined") var __locale = "en";
+
 function formatMoney(value, currency) {
-  return new Intl.NumberFormat("en-US", {
+  var locale = __locale === "es" ? "es-" + __locale.toUpperCase() : "en-US";
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: currency || "USD",
   }).format(value);

@@ -8,6 +8,12 @@ function loadGlobalScript(filePath) {
 }
 
 const jsDir = path.resolve(__dirname, "../../static/js");
+
+// i18n globals
+global.__ = function(key) { return key; };
+global._t = {};
+global.__locale = "en";
+
 loadGlobalScript(path.join(jsDir, "utils.js"));
 loadGlobalScript(path.join(jsDir, "api-client.js"));
 

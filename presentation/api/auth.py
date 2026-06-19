@@ -32,6 +32,7 @@ from functools import wraps
 from typing import Callable, Any, Tuple, Dict, Optional
 
 from flask import Blueprint, request, jsonify, session, redirect, url_for, g, Response
+from flask_babel import _
 from werkzeug.security import check_password_hash
 
 # Infrastructure Imports (Adapters only)
@@ -56,7 +57,7 @@ def login_required(f: Callable[..., Any]) -> Callable[..., Any]:
         if not session.get("authenticated"):
             # REST API rejection
             if request.path.startswith("/api/"):
-                return jsonify({"error": "Unauthorized access. Please log in."}), 401
+                return jsonify({"error": _("Unauthorized access. Please log in.")}), 401
 
             # Browser redirection (Assuming a 'web.login_page' route will exist)
             # Fallback to a plain 401 if you don't have a web blueprint yet
@@ -78,7 +79,7 @@ def login() -> Tuple[Response, int]:
     payload: Optional[Dict[str, Any]] = request.get_json()
 
     if not payload or "pin" not in payload:
-        return jsonify({"error": "Missing 'pin' in request payload."}), 400
+        return jsonify({"error": _("Missing 'pin' in request payload.")}), 400
 
     raw_pin: str = str(payload["pin"])
 
@@ -94,7 +95,7 @@ def login() -> Tuple[Response, int]:
                 "Authentication bypassed attempt: No admin hash found in DB."
             )
             return (
-                jsonify({"error": "System not initialized. Run security setup."}),
+                jsonify({"error": _("System not initialized. Run security setup.")}),
                 500,
             )
 
@@ -106,15 +107,15 @@ def login() -> Tuple[Response, int]:
             session.permanent = True  # Extends cookie life beyond browser close
 
             logger.info("Admin successfully authenticated.")
-            return jsonify({"message": "Authentication successful."}), 200
+            return jsonify({"message": _("Authentication successful.")}), 200
         else:
             # We deliberately use generic error messages to avoid leaking information
             logger.warning("Failed login attempt: Invalid PIN.")
-            return jsonify({"error": "Invalid credentials."}), 401
+            return jsonify({"error": _("Invalid credentials.")}), 401
 
     except Exception as e:
         logger.error(f"Login process failed internally: {str(e)}")
-        return jsonify({"error": "Internal server error during authentication."}), 500
+        return jsonify({"error": _("Internal server error during authentication.")}), 500
 
 
 @auth_bp.route("/logout", methods=["POST"])
@@ -123,4 +124,4 @@ def logout() -> Tuple[Response, int]:
     Terminates the user's active session.
     """
     session.clear()
-    return jsonify({"message": "Logged out successfully."}), 200
+    return jsonify({"message": _("Logged out successfully.")}), 200

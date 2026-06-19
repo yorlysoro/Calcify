@@ -60,13 +60,13 @@ describe("ConfigView", () => {
   it("shows main currency badge", () => {
     loadGlobal("config");
     ConfigView.init();
-    expect(document.getElementById("config-currency-list").innerHTML).toContain("★ Main");
+    expect(document.getElementById("config-currency-list").innerHTML).toContain("main");
   });
 
   it("shows Set Base button for non-main currencies", () => {
     loadGlobal("config");
     ConfigView.init();
-    expect(document.getElementById("config-currency-list").innerHTML).toContain("Set Base");
+    expect(document.getElementById("config-currency-list").innerHTML).toContain("set_base");
   });
 
   it("populates rate currency select", () => {
@@ -86,6 +86,6 @@ describe("ConfigView", () => {
     App.state.rates = [];
     loadGlobal("config");
     ConfigView.init();
-    expect(document.getElementById("config-rates-list").innerHTML).toContain("No rates configured");
+    expect(document.getElementById("config-rates-list").innerHTML).toContain("no_rates");
   });
 });

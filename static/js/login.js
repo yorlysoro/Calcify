@@ -12,7 +12,7 @@ document
 
     errorContainer.classList.add("hidden");
     submitBtn.disabled = true;
-    btnText.textContent = "Decrypting...";
+    btnText.textContent = __("decrypting");
     spinner.classList.remove("hidden");
 
     try {
@@ -25,7 +25,7 @@ document
       const data = await response.json();
 
       if (response.ok) {
-        btnText.textContent = "Access Granted";
+        btnText.textContent = __("access_granted");
         submitBtn.classList.replace("border-cyber-500", "border-green-500");
         submitBtn.classList.replace("text-cyber-500", "text-green-500");
 
@@ -33,7 +33,7 @@ document
           window.location.href = "/";
         }, 800);
       } else {
-        throw new Error(data.error || "Authentication Failed");
+        throw new Error(data.error || __("auth_failed"));
       }
     } catch (error) {
       errorMessage.textContent = error.message;
@@ -48,7 +48,7 @@ document
       );
     } finally {
       submitBtn.disabled = false;
-      btnText.textContent = "Initialize Session";
+      btnText.textContent = __("init_session");
       spinner.classList.add("hidden");
       pinInput.value = "";
       pinInput.focus();

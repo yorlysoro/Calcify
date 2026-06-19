@@ -22,7 +22,7 @@ var CalculatorView = {
   render: function() {
     var base = getBaseCurrency(App.state.currencies);
     if (!base) {
-      this.resultsEl.innerHTML = '<div class="col-span-full text-center py-8 text-zinc-500">⚠️ Please set a base currency in <button onclick="App.switchTab(\'view-config\')" class="text-emerald-500 hover:underline">Settings</button> to use the calculator.</div>';
+      this.resultsEl.innerHTML = '<div class="col-span-full text-center py-8 text-zinc-500">⚠️ ' + __("please_set_base") + ' <button onclick="App.switchTab(\'view-config\')" class="text-emerald-500 hover:underline">' + __("settings_link") + '</button> ' + __("to_use_calculator") + '</div>';
       return;
     }
 

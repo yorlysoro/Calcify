@@ -21,7 +21,7 @@ var App = {
 
       var statusText = document.getElementById("sys-status-text");
       var statusDot = document.getElementById("sys-status-dot");
-      if (statusText) statusText.textContent = "Online";
+      if (statusText) statusText.textContent = __("online");
       if (statusDot) statusDot.classList.replace("bg-zinc-500", "bg-emerald-500");
     } catch (error) {
       console.error("Failed to bootstrap application data:", error);

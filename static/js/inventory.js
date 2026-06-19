@@ -43,8 +43,8 @@ var InventoryView = {
 
     document.getElementById("add-product-btn").addEventListener("click", function() {
       InventoryView.editingId = null;
-      document.getElementById("modal-title").innerHTML = 'Add <strong class="font-bold text-emerald-500">Product</strong>';
-      document.getElementById("save-modal-btn").textContent = "Save";
+      document.getElementById("modal-title").innerHTML = __("add") + ' <strong class="font-bold text-emerald-500">' + __("product") + '</strong>';
+      document.getElementById("save-modal-btn").textContent = __("save");
       form.reset();
       updatePreview();
       modal.classList.remove("hidden");
@@ -91,7 +91,7 @@ var InventoryView = {
         form.reset();
         updatePreview();
       } catch (error) {
-        alert("Error saving product: " + error.message);
+        alert(__("error_saving") + " " + error.message);
       } finally {
         loader.classList.add("hidden");
       }
@@ -103,8 +103,8 @@ var InventoryView = {
     if (!product) return;
 
     this.editingId = id;
-    document.getElementById("modal-title").innerHTML = 'Edit <strong class="font-bold text-emerald-500">Product</strong>';
-    document.getElementById("save-modal-btn").textContent = "Update";
+    document.getElementById("modal-title").innerHTML = __("edit") + ' <strong class="font-bold text-emerald-500">' + __("product") + '</strong>';
+    document.getElementById("save-modal-btn").textContent = __("update");
     document.getElementById("prod-name").value = product.name;
     document.getElementById("prod-category").value = product.category || "";
     document.getElementById("prod-cost").value = product.cost_price;
@@ -120,14 +120,14 @@ var InventoryView = {
   },
 
   deleteProduct: async function(id) {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+    if (!confirm(__("are_you_sure"))) return;
 
     try {
       await ApiClient.delete("/api/v1/products/" + id);
       App.state.products = App.state.products.filter(function(p) { return p.id !== id; });
       this.render();
     } catch (error) {
-      alert("Error deleting: " + error.message);
+      alert(__("error_deleting") + " " + error.message);
     }
   },
 
@@ -141,8 +141,8 @@ var InventoryView = {
     });
 
     if (filtered.length === 0) {
-      this.tbodyEl.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-zinc-500">No products found.</td></tr>';
-      this.cardsContainer.innerHTML = '<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">No products found.</div>';
+      this.tbodyEl.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-zinc-500">' + __("no_products") + '</td></tr>';
+      this.cardsContainer.innerHTML = '<div class="p-8 text-center text-zinc-500 bg-zinc-900/30 rounded-lg">' + __("no_products") + '</div>';
       return;
     }
 
@@ -161,23 +161,23 @@ var InventoryView = {
         '<td class="px-6 py-4 font-mono text-emerald-500">+' + p.margin_percentage + '%</td>' +
         '<td class="px-6 py-4 font-mono text-white font-bold">' + formattedSale + '</td>' +
         '<td class="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">' +
-        '<button onclick="InventoryView.editProduct(\'' + p.id + '\')" class="text-emerald-500 hover:text-emerald-400 font-bold text-xs uppercase tracking-wider mr-3">Edit</button>' +
-        '<button onclick="InventoryView.deleteProduct(\'' + p.id + '\')" class="text-red-500 hover:text-red-400 font-bold text-xs uppercase tracking-wider">Delete</button>' +
+        '<button onclick="InventoryView.editProduct(\'' + p.id + '\')" class="text-emerald-500 hover:text-emerald-400 font-bold text-xs uppercase tracking-wider mr-3">' + __("edit") + '</button>' +
+        '<button onclick="InventoryView.deleteProduct(\'' + p.id + '\')" class="text-red-500 hover:text-red-400 font-bold text-xs uppercase tracking-wider">' + __("delete") + '</button>' +
         '</td></tr>';
 
       this.cardsContainer.innerHTML += '<div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 flex flex-col gap-3">' +
         '<div class="flex justify-between items-start">' +
         '<div><h4 class="text-lg font-bold text-white leading-tight">' + p.name + '</h4>' +
         '<span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">' + (p.category || "-") + '</span></div>' +
-        '<div class="text-right"><span class="block text-[0.65rem] text-zinc-500 uppercase tracking-widest">Sale Price</span>' +
+        '<div class="text-right"><span class="block text-[0.65rem] text-zinc-500 uppercase tracking-widest">' + __("sale_price") + '</span>' +
         '<span class="font-mono font-bold text-emerald-400">' + formattedSale + '</span></div></div>' +
         '<div class="flex justify-between items-center bg-black rounded p-2 border border-zinc-800/50">' +
         '<span class="text-xs text-zinc-400 font-mono">Stock: ' + (p.stock_quantity ?? 0) + '</span>' +
         '<span class="text-xs text-zinc-400 font-mono">Cost: ' + formattedCost + '</span>' +
         '<span class="text-xs text-emerald-500 font-mono">+' + p.margin_percentage + '%</span></div>' +
         '<div class="grid grid-cols-2 gap-2 mt-2">' +
-        '<button onclick="InventoryView.editProduct(\'' + p.id + '\')" class="bg-zinc-800 text-zinc-300 py-2 rounded text-xs font-bold uppercase tracking-wider">Edit</button>' +
-        '<button onclick="InventoryView.deleteProduct(\'' + p.id + '\')" class="bg-red-900/20 text-red-500 border border-red-900/30 py-2 rounded text-xs font-bold uppercase tracking-wider">Delete</button>' +
+        '<button onclick="InventoryView.editProduct(\'' + p.id + '\')" class="bg-zinc-800 text-zinc-300 py-2 rounded text-xs font-bold uppercase tracking-wider">' + __("edit") + '</button>' +
+        '<button onclick="InventoryView.deleteProduct(\'' + p.id + '\')" class="bg-red-900/20 text-red-500 border border-red-900/30 py-2 rounded text-xs font-bold uppercase tracking-wider">' + __("delete") + '</button>' +
         '</div></div>';
     }.bind(this));
   },

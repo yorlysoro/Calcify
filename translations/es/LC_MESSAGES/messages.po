@@ -1,0 +1,664 @@
+# Spanish translations for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-06-18 20:45-0400\n"
+"PO-Revision-Date: 2026-06-18 20:45-0400\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: es\n"
+"Language-Team: es <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: app.py:94 presentation/templates/index.html:34
+msgid "Calculator"
+msgstr "Calculadora"
+
+#: app.py:95 presentation/templates/index.html:37
+#: presentation/templates/index.html:80
+msgid "Inventory"
+msgstr "Inventario"
+
+#: app.py:96 presentation/templates/index.html:40
+msgid "Configuration"
+msgstr "Configuración"
+
+#: app.py:97 presentation/templates/index.html:43
+#: presentation/templates/index.html:246
+msgid "Reports"
+msgstr "Informes"
+
+#: app.py:98 presentation/templates/index.html:46
+msgid "Sales"
+msgstr "Ventas"
+
+#: app.py:99 presentation/templates/index.html:156
+msgid "Daily Report"
+msgstr "Reporte Diario"
+
+#: app.py:100 presentation/templates/index.html:161
+msgid "Total Purchases"
+msgstr "Total Compras"
+
+#: app.py:101 presentation/templates/index.html:165
+msgid "Total Sales"
+msgstr "Total Ventas"
+
+#: app.py:102 presentation/templates/index.html:170
+msgid "Net Profit"
+msgstr "Ganancia Neta"
+
+#: app.py:103 presentation/templates/index.html:92
+#: presentation/templates/index.html:263
+msgid "Product Name"
+msgstr "Nombre del Producto"
+
+#: app.py:104 presentation/templates/index.html:93
+#: presentation/templates/index.html:118
+msgid "Category"
+msgstr "Categoría"
+
+#: app.py:105 presentation/templates/index.html:94
+msgid "Stock"
+msgstr "Stock"
+
+#: app.py:106 presentation/templates/index.html:95
+#: presentation/templates/index.html:123
+msgid "Cost Price"
+msgstr "Precio de Costo"
+
+#: app.py:107 presentation/templates/index.html:96
+msgid "Margin"
+msgstr "Margen"
+
+#: app.py:108 presentation/templates/index.html:97
+msgid "Sale Price"
+msgstr "Precio de Venta"
+
+#: app.py:109 presentation/templates/index.html:98
+msgid "Actions"
+msgstr "Acciones"
+
+#: app.py:110 presentation/templates/index.html:84
+#: presentation/templates/index.html:287
+msgid "Search product..."
+msgstr "Buscar producto..."
+
+#: app.py:111 presentation/templates/index.html:85
+msgid "Add Product"
+msgstr "Agregar Producto"
+
+#: app.py:112
+msgid "Edit"
+msgstr "Editar"
+
+#: app.py:113 app.py:137
+msgid "Delete"
+msgstr "Eliminar"
+
+#: app.py:114 presentation/templates/index.html:145
+msgid "Save"
+msgstr "Guardar"
+
+#: app.py:115
+msgid "Update"
+msgstr "Actualizar"
+
+#: app.py:116 presentation/templates/index.html:144
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: app.py:117
+msgid "No products found."
+msgstr "No se encontraron productos."
+
+#: app.py:118
+msgid "Are you sure you want to delete this product?"
+msgstr "¿Estás seguro de eliminar este producto?"
+
+#: app.py:119
+msgid "Error saving product:"
+msgstr "Error al guardar producto:"
+
+#: app.py:120
+msgid "Error deleting:"
+msgstr "Error al eliminar:"
+
+#: app.py:121 presentation/templates/index.html:140
+msgid "Estimated Sale Price"
+msgstr "Precio de Venta Estimado"
+
+#: app.py:122 presentation/templates/index.html:80
+#: presentation/templates/index.html:111 presentation/templates/index.html:286
+msgid "Product"
+msgstr "Producto"
+
+#: app.py:123 presentation/templates/index.html:291
+msgid "Quantity"
+msgstr "Cantidad"
+
+#: app.py:124 presentation/templates/index.html:295
+msgid "Unit Price"
+msgstr "Precio Unitario"
+
+#: app.py:125 presentation/templates/index.html:127
+#: presentation/templates/index.html:203 presentation/templates/index.html:299
+msgid "Currency"
+msgstr "Moneda"
+
+#: app.py:126
+msgid "Comment (optional)"
+msgstr "Comentario (opcional)"
+
+#: app.py:127 presentation/templates/index.html:305
+msgid "Notes about the sale..."
+msgstr "Notas sobre la venta..."
+
+#: app.py:128 presentation/templates/index.html:307
+msgid "Register Sale"
+msgstr "Registrar Venta"
+
+#: app.py:129
+msgid "Registering..."
+msgstr "Registrando..."
+
+#: app.py:130
+msgid "✓ Sale registered successfully."
+msgstr "✓ Venta registrada exitosamente."
+
+#: app.py:131
+msgid "— No results —"
+msgstr "— Sin resultados —"
+
+#: app.py:132
+msgid "★ Main"
+msgstr "★ Principal"
+
+#: app.py:133
+msgid "Set Base"
+msgstr "Establecer Base"
+
+#: app.py:134
+msgid "Error adding currency:"
+msgstr "Error al agregar moneda:"
+
+#: app.py:135
+msgid "Error setting base currency:"
+msgstr "Error al establecer moneda base:"
+
+#: app.py:136
+msgid "No rates configured."
+msgstr "No hay tasas configuradas."
+
+#: app.py:138
+msgid "Error adding rate:"
+msgstr "Error al agregar tasa:"
+
+#: app.py:139
+msgid "Error deleting rate:"
+msgstr "Error al eliminar tasa:"
+
+#: app.py:140
+msgid "Delete this exchange rate?"
+msgstr "¿Eliminar esta tasa de cambio?"
+
+#: app.py:141
+msgid "No transactions for this date."
+msgstr "No hay transacciones para esta fecha."
+
+#: app.py:142
+msgid "Failed to load transactions."
+msgstr "Error al cargar transacciones."
+
+#: app.py:143
+msgid "No data to export."
+msgstr "No hay datos para exportar."
+
+#: app.py:144 presentation/templates/index.html:255
+msgid "Export CSV"
+msgstr "Exportar CSV"
+
+#: app.py:145 presentation/templates/index.html:262
+msgid "Time"
+msgstr "Hora"
+
+#: app.py:146 presentation/templates/index.html:264
+msgid "Type"
+msgstr "Tipo"
+
+#: app.py:147 presentation/templates/index.html:265
+msgid "Qty"
+msgstr "Cant"
+
+#: app.py:148 presentation/templates/index.html:266
+msgid "Unit Price (Original)"
+msgstr "Precio Unit. (Original)"
+
+#: app.py:149 presentation/templates/index.html:267
+msgid "Converted Values"
+msgstr "Valores Convertidos"
+
+#: app.py:150
+msgid "Please set a base currency in"
+msgstr "Por favor establece una moneda base en"
+
+#: app.py:151 presentation/templates/index.html:217
+msgid "Settings"
+msgstr "Ajustes"
+
+#: app.py:152
+msgid "to use the calculator."
+msgstr "para usar la calculadora."
+
+#: app.py:153 presentation/templates/index.html:162
+#: presentation/templates/index.html:166 presentation/templates/index.html:171
+msgid "Loading..."
+msgstr "Cargando..."
+
+#: app.py:154
+msgid "Online"
+msgstr "En línea"
+
+#: app.py:155 presentation/templates/index.html:27
+msgid "Offline"
+msgstr "Fuera de línea"
+
+#: app.py:156
+msgid "Decrypting..."
+msgstr "Descifrando..."
+
+#: app.py:157
+msgid "Access Granted"
+msgstr "Acceso Concedido"
+
+#: app.py:158 presentation/templates/login.html:29
+msgid "Initialize Session"
+msgstr "Iniciar Sesión"
+
+#: app.py:159 presentation/templates/login.html:24
+msgid "Access Denied"
+msgstr "Acceso Denegado"
+
+#: app.py:160
+msgid "Authentication Failed"
+msgstr "Autenticación Fallida"
+
+#: app.py:161 presentation/templates/login.html:13
+msgid "Authorized Personnel Only"
+msgstr "Solo Personal Autorizado"
+
+#: app.py:162
+msgid "Cash Register"
+msgstr "Caja Registradora"
+
+#: app.py:163 presentation/templates/index.html:280
+msgid "Manage daily sales and inventory."
+msgstr "Gestiona las ventas diarias y el inventario."
+
+#: app.py:164 presentation/templates/index.html:16
+msgid "SPA MODE"
+msgstr "MODO SPA"
+
+#: app.py:165 presentation/templates/index.html:225
+msgid "New PIN"
+msgstr "Nuevo PIN"
+
+#: app.py:166 presentation/templates/index.html:229
+msgid "Confirm PIN"
+msgstr "Confirmar PIN"
+
+#: app.py:167 presentation/templates/index.html:232
+msgid "Update Credentials"
+msgstr "Actualizar Credenciales"
+
+#: app.py:168 presentation/templates/index.html:222
+msgid "Security"
+msgstr "Seguridad"
+
+#: app.py:169 presentation/templates/index.html:236
+msgid "Data Backup"
+msgstr "Respaldo de Datos"
+
+#: app.py:170 presentation/templates/index.html:237
+msgid "Export all currencies, products, and transactions to a secure JSON file."
+msgstr "Exporta todas las monedas, productos y transacciones a un archivo JSON seguro."
+
+#: app.py:171 presentation/templates/index.html:238
+msgid "Download JSON Backup"
+msgstr "Descargar Respaldo JSON"
+
+#: app.py:172 presentation/templates/index.html:177
+msgid "Currency Management"
+msgstr "Gestión de Monedas"
+
+#: app.py:173 presentation/templates/index.html:199
+msgid "Exchange Rates"
+msgstr "Tasas de Cambio"
+
+#: app.py:174 presentation/templates/index.html:181
+msgid "Code"
+msgstr "Código"
+
+#: app.py:175 presentation/templates/index.html:114
+#: presentation/templates/index.html:185
+msgid "Name"
+msgstr "Nombre"
+
+#: app.py:176 presentation/templates/index.html:189
+msgid "Symbol"
+msgstr "Símbolo"
+
+#: app.py:177 presentation/templates/index.html:207
+msgid "Rate"
+msgstr "Tasa"
+
+#: app.py:178 presentation/templates/index.html:193
+msgid "Add Currency"
+msgstr "Agregar Moneda"
+
+#: app.py:179 presentation/templates/index.html:211
+msgid "Add Rate"
+msgstr "Agregar Tasa"
+
+#: app.py:180 presentation/templates/index.html:62
+msgid "Base Amount"
+msgstr "Monto Base"
+
+#: app.py:181 presentation/templates/index.html:66
+msgid "Source"
+msgstr "Origen"
+
+#: app.py:182 presentation/templates/index.html:251
+msgid "Filter by Date"
+msgstr "Filtrar por Fecha"
+
+#: app.py:183
+msgid "Product Inventory"
+msgstr "Inventario de Productos"
+
+#: app.py:184 presentation/templates/index.html:81
+msgid "Manage assets and margins."
+msgstr "Gestiona activos y márgenes."
+
+#: app.py:185 presentation/templates/index.html:247
+msgid "Daily ledger with multi-currency conversion."
+msgstr "Libro diario con conversión multi-moneda."
+
+#: app.py:186
+msgid "System Settings"
+msgstr "Configuración del Sistema"
+
+#: app.py:187 presentation/templates/index.html:218
+msgid "Security and data management."
+msgstr "Seguridad y gestión de datos."
+
+#: app.py:188 presentation/templates/index.html:57
+msgid "Real-time cross-currency engine."
+msgstr "Motor de conversión multi-moneda en tiempo real."
+
+#: app.py:189
+msgid "Financial Matrix"
+msgstr "Matriz Financiera"
+
+#: app.py:190
+msgid "Transaction Reports"
+msgstr "Informes de Transacciones"
+
+#: app.py:191 presentation/templates/index.html:119
+msgid "e.g. Hardware, Services..."
+msgstr "ej. Hardware, Servicios..."
+
+#: app.py:192
+msgid "Uncategorized"
+msgstr "Sin categoría"
+
+#: app.py:314
+msgid "Locale changed."
+msgstr "Idioma cambiado."
+
+#: presentation/api/auth.py:60
+msgid "Unauthorized access. Please log in."
+msgstr "Acceso no autorizado. Por favor inicia sesión."
+
+#: presentation/api/auth.py:82
+msgid "Missing 'pin' in request payload."
+msgstr "Falta 'pin' en la solicitud."
+
+#: presentation/api/auth.py:98
+msgid "System not initialized. Run security setup."
+msgstr "Sistema no inicializado. Ejecuta la configuración de seguridad."
+
+#: presentation/api/auth.py:110
+msgid "Authentication successful."
+msgstr "Autenticación exitosa."
+
+#: presentation/api/auth.py:114
+msgid "Invalid credentials."
+msgstr "Credenciales inválidas."
+
+#: presentation/api/auth.py:118
+msgid "Internal server error during authentication."
+msgstr "Error interno del servidor durante la autenticación."
+
+#: presentation/api/auth.py:127
+msgid "Logged out successfully."
+msgstr "Sesión cerrada exitosamente."
+
+#: presentation/api/routes.py:69
+msgid "Internal Server Error"
+msgstr "Error Interno del Servidor"
+
+#: presentation/api/routes.py:93
+msgid "Internal server error while fetching currencies."
+msgstr "Error interno al obtener monedas."
+
+#: presentation/api/routes.py:107 presentation/api/routes.py:161
+#: presentation/api/routes.py:281 presentation/api/routes.py:366
+#: presentation/api/routes.py:470 presentation/api/routes.py:560
+#: presentation/api/routes.py:670
+msgid "Invalid or missing JSON payload."
+msgstr "Payload JSON inválido o faltante."
+
+#: presentation/api/routes.py:119
+#, python-format
+msgid "Currency %(code)s already exists."
+msgstr "La moneda %(code)s ya existe."
+
+#: presentation/api/routes.py:130
+msgid "Currency created successfully."
+msgstr "Moneda creada exitosamente."
+
+#: presentation/api/routes.py:142 presentation/api/routes.py:198
+#: presentation/api/routes.py:406 presentation/api/routes.py:505
+#: presentation/api/routes.py:591 presentation/api/routes.py:708
+#, python-format
+msgid "Missing required field: %(field)s"
+msgstr "Campo requerido faltante: %(field)s"
+
+#: presentation/api/routes.py:147
+msgid "Failed to process the currency creation request."
+msgstr "Error al procesar la solicitud de creación de moneda."
+
+#: presentation/api/routes.py:190
+msgid "Product created successfully."
+msgstr "Producto creado exitosamente."
+
+#: presentation/api/routes.py:200
+msgid "Invalid UUID format provided for 'id'."
+msgstr "Formato UUID inválido para 'id'."
+
+#: presentation/api/routes.py:203 presentation/api/routes.py:315
+#: presentation/api/routes.py:410 presentation/api/routes.py:712
+msgid "Financial values must be valid decimal numbers."
+msgstr "Los valores financieros deben ser números decimales válidos."
+
+#: presentation/api/routes.py:210
+msgid "Failed to process the product creation request."
+msgstr "Error al procesar la solicitud de creación de producto."
+
+#: presentation/api/routes.py:229 presentation/api/routes.py:277
+#: presentation/api/routes.py:757
+#, python-format
+msgid "Product with ID %(id)s not found."
+msgstr "Producto con ID %(id)s no encontrado."
+
+#: presentation/api/routes.py:255 presentation/api/routes.py:313
+#: presentation/api/routes.py:763
+msgid "Invalid product ID format. Must be a valid UUID."
+msgstr "Formato de ID de producto inválido. Debe ser un UUID válido."
+
+#: presentation/api/routes.py:260 presentation/api/routes.py:319
+#: presentation/api/routes.py:624 presentation/api/routes.py:739
+#: presentation/api/routes.py:767
+msgid "Internal server error."
+msgstr "Error interno del servidor."
+
+#: presentation/api/routes.py:300
+msgid "Product updated successfully."
+msgstr "Producto actualizado exitosamente."
+
+#: presentation/api/routes.py:354
+msgid "Internal server error while fetching products."
+msgstr "Error interno al obtener productos."
+
+#: presentation/api/routes.py:375
+#, python-format
+msgid "Product %(id)s does not exist."
+msgstr "El producto %(id)s no existe."
+
+#: presentation/api/routes.py:401
+msgid "Transaction recorded successfully."
+msgstr "Transacción registrada exitosamente."
+
+#: presentation/api/routes.py:408
+#, python-format
+msgid "Invalid data format: %(msg)s"
+msgstr "Formato de datos inválido: %(msg)s"
+
+#: presentation/api/routes.py:414
+msgid "Failed to process the transaction request."
+msgstr "Error al procesar la solicitud de transacción."
+
+#: presentation/api/routes.py:439
+msgid "Invalid date format. Use YYYY-MM-DD."
+msgstr "Formato de fecha inválido. Usa AAAA-MM-DD."
+
+#: presentation/api/routes.py:458
+msgid "Internal server error while fetching transactions."
+msgstr "Error interno al obtener transacciones."
+
+#: presentation/api/routes.py:492
+msgid "Rate created successfully."
+msgstr "Tasa creada exitosamente."
+
+#: presentation/api/routes.py:507
+msgid "Rate must be a valid decimal number."
+msgstr "La tasa debe ser un número decimal válido."
+
+#: presentation/api/routes.py:511
+msgid "Failed to process rate creation."
+msgstr "Error al procesar la creación de tasa."
+
+#: presentation/api/routes.py:595
+msgid "Amount must be a valid decimal number."
+msgstr "El monto debe ser un número decimal válido."
+
+#: presentation/api/routes.py:598
+msgid "Failed to process currency conversion."
+msgstr "Error al procesar la conversión de moneda."
+
+#: presentation/api/routes.py:614
+#, python-format
+msgid "Rate with ID %(id)s not found."
+msgstr "Tasa con ID %(id)s no encontrada."
+
+#: presentation/api/routes.py:617
+msgid "Rate deleted successfully."
+msgstr "Tasa eliminada exitosamente."
+
+#: presentation/api/routes.py:620
+msgid "Invalid rate ID format. Must be a valid UUID."
+msgstr "Formato de ID de tasa inválido. Debe ser un UUID válido."
+
+#: presentation/api/routes.py:661
+msgid "Failed to generate system backup."
+msgstr "Error al generar el respaldo del sistema."
+
+#: presentation/api/routes.py:693
+msgid "Sale registered successfully."
+msgstr "Venta registrada exitosamente."
+
+#: presentation/api/routes.py:716
+msgid "Failed to process the sale request."
+msgstr "Error al procesar la solicitud de venta."
+
+#: presentation/api/routes.py:729
+#, python-format
+msgid "Currency %(code)s not found."
+msgstr "Moneda %(code)s no encontrada."
+
+#: presentation/api/routes.py:734
+#, python-format
+msgid "%(code)s set as main currency."
+msgstr "%(code)s establecida como moneda principal."
+
+#: presentation/api/routes.py:760
+msgid "Product deleted successfully."
+msgstr "Producto eliminado exitosamente."
+
+#: presentation/templates/index.html:56
+msgid "Financial"
+msgstr "Matriz"
+
+#: presentation/templates/index.html:56
+msgid "Matrix"
+msgstr "Financiera"
+
+#: presentation/templates/index.html:111
+msgid "Add"
+msgstr "Agregar"
+
+#: presentation/templates/index.html:132
+msgid "Margin (%)"
+msgstr "Margen (%)"
+
+#: presentation/templates/index.html:136
+msgid "Stock Quantity"
+msgstr "Cantidad en Stock"
+
+#: presentation/templates/index.html:217
+msgid "System"
+msgstr "Sistema"
+
+#: presentation/templates/index.html:246
+msgid "Transaction"
+msgstr "Transacciones"
+
+#: presentation/templates/index.html:279
+msgid "Register"
+msgstr "Registrar"
+
+#: presentation/templates/index.html:279
+msgid "Sale"
+msgstr "Venta"
+
+#: presentation/templates/index.html:304
+msgid "Comment"
+msgstr "Comentario"
+
+#: presentation/templates/index.html:304
+msgid "optional"
+msgstr "opcional"
+
+#: presentation/templates/login.html:18
+msgid "Access PIN"
+msgstr "PIN de Acceso"
+

@@ -247,7 +247,7 @@ def test_export_backup_success(client: FlaskClient, seed_admin_password: None) -
     
     # Verify Content-Disposition header triggers a download with the correct prefix
     assert "Content-Disposition" in response.headers
-    assert response.headers["Content-Disposition"].startswith("attachment; filename=respaldo_calculadora_")
+    assert response.headers["Content-Disposition"].startswith("attachment; filename=calcify_backup_")
     
     # 5. Assert: Verify Domain Serialization Payload
     payload = response.get_json()
@@ -1133,3 +1133,337 @@ def test_get_transactions_invalid_date(
     response = client.get("/api/v1/transactions?date=not-a-date")
     assert response.status_code == 400
     assert "Invalid date format" in response.get_json()["error"]
+
+
+# ──────────────────────────────────────────────
+# 16 except Exception handler tests (routes.py)
+# ──────────────────────────────────────────────
+
+
+def test_get_currencies_exception(client, seed_admin_password, monkeypatch):
+    """GET /api/v1/currencies except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_get_all(self):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyCurrencyRepository.get_all",
+        mock_get_all,
+    )
+
+    response = client.get("/api/v1/currencies")
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_create_currency_exception(client, seed_admin_password, monkeypatch):
+    """POST /api/v1/currencies except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_save(self, currency):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyCurrencyRepository.save",
+        mock_save,
+    )
+
+    response = client.post("/api/v1/currencies", json={
+        "code": "EUR", "name": "Euro", "symbol": "\u20ac", "is_main": False,
+    })
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_create_product_exception(client, seed_admin_password, monkeypatch):
+    """POST /api/v1/products except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_save(self, product):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyProductRepository.save",
+        mock_save,
+    )
+
+    response = client.post("/api/v1/products", json={
+        "id": str(uuid4()), "name": "Test",
+        "cost_price": "10.00", "cost_currency_code": "USD",
+        "margin_percentage": "5.00",
+    })
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_get_product_exception(client, seed_admin_password, monkeypatch):
+    """GET /api/v1/products/<id> except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_get_by_id(self, product_id):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyProductRepository.get_by_id",
+        mock_get_by_id,
+    )
+
+    response = client.get(f"/api/v1/products/{uuid4()}")
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_update_product_exception(client, seed_admin_password, monkeypatch):
+    """PUT /api/v1/products/<id> except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    target_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyProductRepository(g.db_session)
+        repo.save(Product(
+            id=target_id, name="Test", cost_price=Decimal("10.00"),
+            cost_currency_code="USD", margin_percentage=Decimal("5.00"),
+        ))
+        g.db_session.commit()
+
+    def mock_save(self, product):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyProductRepository.save",
+        mock_save,
+    )
+
+    response = client.put(f"/api/v1/products/{target_id}", json={"name": "Updated"})
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_get_products_exception(client, seed_admin_password, monkeypatch):
+    """GET /api/v1/products except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_get_all(self):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyProductRepository.get_all",
+        mock_get_all,
+    )
+
+    response = client.get("/api/v1/products")
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_create_transaction_exception(client, seed_admin_password, monkeypatch):
+    """POST /api/v1/transactions except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    target_product_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        prod_repo = SqlAlchemyProductRepository(g.db_session)
+        prod_repo.save(Product(
+            id=target_product_id, name="Test",
+            cost_price=Decimal("10.00"), cost_currency_code="USD",
+            margin_percentage=Decimal("5.00"),
+        ))
+        g.db_session.commit()
+
+    def mock_save(self, tx):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyTransactionRepository.save",
+        mock_save,
+    )
+
+    response = client.post("/api/v1/transactions", json={
+        "product_id": str(target_product_id),
+        "transaction_type": "IN", "quantity": 1,
+        "unit_price": "10.00", "currency_code": "USD",
+    })
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_get_transactions_exception(client, seed_admin_password, monkeypatch):
+    """GET /api/v1/transactions except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_get_all(self):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyTransactionRepository.get_all",
+        mock_get_all,
+    )
+
+    response = client.get("/api/v1/transactions")
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_create_currency_rate_exception(client, seed_admin_password, monkeypatch):
+    """POST /api/v1/rates except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_save(self, rate):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyCurrencyRateRepository.save",
+        mock_save,
+    )
+
+    response = client.post("/api/v1/rates", json={
+        "currency_code": "EUR", "rate": "1.05",
+    })
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_get_latest_currency_rates_exception(client, seed_admin_password, monkeypatch):
+    """GET /api/v1/rates/latest except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_get_all_latest(self):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyCurrencyRateRepository.get_all_latest",
+        mock_get_all_latest,
+    )
+
+    response = client.get("/api/v1/rates/latest")
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_convert_currency_exception(client, seed_admin_password, monkeypatch):
+    """POST /api/v1/convert except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_execute(self, source_currency_code, target_currency_code, amount):
+        raise RuntimeError("Conversion failed")
+
+    monkeypatch.setattr(
+        "use_cases.currency_conversion.CurrencyConversionUseCase.execute",
+        mock_execute,
+    )
+
+    response = client.post("/api/v1/convert", json={
+        "source_currency_code": "USD",
+        "target_currency_code": "EUR",
+        "amount": "10.00",
+    })
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_delete_currency_rate_exception(client, seed_admin_password, monkeypatch):
+    """DELETE /api/v1/rates/<id> except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_delete(self, rate_id):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyCurrencyRateRepository.delete",
+        mock_delete,
+    )
+
+    response = client.delete(f"/api/v1/rates/{uuid4()}")
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_export_backup_exception(client, seed_admin_password, monkeypatch):
+    """GET /api/v1/backup/export except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_execute(self):
+        raise RuntimeError("Backup failed")
+
+    monkeypatch.setattr(
+        "use_cases.export_backup.ExportBackupUseCase.execute",
+        mock_execute,
+    )
+
+    response = client.get("/api/v1/backup/export")
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_register_sale_exception(client, seed_admin_password, monkeypatch):
+    """POST /api/v1/sales except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_execute(self, product_id, quantity, unit_price, currency_code, comment):
+        raise RuntimeError("Sale failed")
+
+    monkeypatch.setattr(
+        "use_cases.sales.RegisterSaleUseCase.execute",
+        mock_execute,
+    )
+
+    response = client.post("/api/v1/sales", json={
+        "product_id": str(uuid4()),
+        "quantity": 1, "unit_price": "10.00",
+        "currency_code": "USD", "comment": "Test",
+    })
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_set_main_currency_exception(client, seed_admin_password, monkeypatch):
+    """PUT /api/v1/currencies/<code>/set_main except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_set_main(self, code):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyCurrencyRepository.set_main",
+        mock_set_main,
+    )
+
+    response = client.put("/api/v1/currencies/USD/set_main")
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+def test_delete_product_exception(client, seed_admin_password, monkeypatch):
+    """DELETE /api/v1/products/<id> except Exception handler."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    def mock_delete(self, product_id):
+        raise RuntimeError("DB error")
+
+    monkeypatch.setattr(
+        "infrastructure.repositories.sqlalchemy_repos.SqlAlchemyProductRepository.delete",
+        mock_delete,
+    )
+
+    response = client.delete(f"/api/v1/products/{uuid4()}")
+    assert response.status_code == 500
+    assert "error" in response.get_json()

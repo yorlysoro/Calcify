@@ -221,7 +221,7 @@ schema_trace.sql
 # Node / npm
 node_modules/
 
-# Excepción para Tailwind compilado (necesario en producción sin build step)
+# Exception for compiled Tailwind CSS (needed in production without build step)
 !/static/dist/tailwind.css
 
 # IDEs

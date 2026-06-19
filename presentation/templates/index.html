@@ -13,32 +13,37 @@
   <div class="px-4 md:px-6 h-14 flex items-center justify-between">
     <div class="flex items-center gap-3">
       <span class="text-xl font-bold tracking-widest uppercase text-white">Calcify</span>
-      <span class="px-2 py-0.5 rounded text-[0.65rem] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 hidden md:inline">SPA MODE</span>
+      <span class="px-2 py-0.5 rounded text-[0.65rem] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 hidden md:inline">{{ _("SPA MODE") }}</span>
     </div>
-    <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-full">
-      <span class="relative flex h-2 w-2">
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" id="sys-status-dot-ping"></span>
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-zinc-500" id="sys-status-dot"></span>
-      </span>
-      <span id="sys-status-text" class="text-[0.65rem] font-bold text-zinc-300 tracking-wider uppercase">Offline</span>
+    <div class="flex items-center gap-2">
+      <button onclick="window.location.href='/api/v1/locale/{{ "es" if current_locale == "en" else "en" }}'" class="px-2 py-1 text-xs font-bold uppercase tracking-wider rounded border {% if current_locale == 'en' %}border-emerald-500 text-emerald-500{% else %}border-zinc-700 text-zinc-400{% endif %} hover:border-emerald-400 hover:text-emerald-400 transition-colors">
+        {{ "ES" if current_locale == "en" else "EN" }}
+      </button>
+      <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-full">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" id="sys-status-dot-ping"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-zinc-500" id="sys-status-dot"></span>
+        </span>
+        <span id="sys-status-text" class="text-[0.65rem] font-bold text-zinc-300 tracking-wider uppercase">{{ _("Offline") }}</span>
+      </div>
     </div>
   </div>
 
   <nav class="flex overflow-x-auto px-4 md:px-6 gap-6 scrollbar-hide border-t border-zinc-900 md:border-none">
     <button data-target="view-calculator" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-emerald-500 border-emerald-500">
-      <span>🧮</span> Calculadora
+      <span>🧮</span> {{ _("Calculator") }}
     </button>
     <button data-target="view-inventory" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700">
-      <span>📦</span> Inventario
+      <span>📦</span> {{ _("Inventory") }}
     </button>
     <button data-target="view-config" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700">
-      <span>⚙️</span> Configuración
+      <span>⚙️</span> {{ _("Configuration") }}
     </button>
     <button data-target="view-reports" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700">
-      <span>📊</span> Reports
+      <span>📊</span> {{ _("Reports") }}
     </button>
     <button data-target="view-sales" class="tab-btn flex items-center gap-2 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap text-zinc-500 border-transparent hover:text-zinc-300 hover:border-zinc-700">
-      <span>🛒</span> Ventas
+      <span>🛒</span> {{ _("Sales") }}
     </button>
   </nav>
 </header>
@@ -48,17 +53,17 @@
   <!-- Calculator View -->
   <section id="view-calculator" class="w-full">
     <div class="mb-6">
-      <h2 class="text-2xl font-light text-white">Financial <strong class="font-bold text-emerald-500">Matrix</strong></h2>
-      <p class="text-zinc-500 text-sm">Real-time cross-currency engine.</p>
+      <h2 class="text-2xl font-light text-white">{{ _("Financial") }} <strong class="font-bold text-emerald-500">{{ _("Matrix") }}</strong></h2>
+      <p class="text-zinc-500 text-sm">{{ _("Real-time cross-currency engine.") }}</p>
     </div>
     <div class="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-6 shadow-2xl">
       <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 mb-8">
         <div class="relative group">
-          <label class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500">Base Amount</label>
+          <label class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500">{{ _("Base Amount") }}</label>
           <input type="number" id="calc-input" value="100.00" class="w-full bg-black border border-zinc-800 rounded-xl text-3xl p-5 text-white focus:outline-none focus:border-emerald-500 font-mono transition-colors" />
         </div>
         <div class="relative md:w-48">
-          <label class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500">Source</label>
+          <label class="absolute -top-2.5 left-4 px-1 bg-zinc-950 text-[0.65rem] font-bold tracking-widest uppercase text-emerald-500">{{ _("Source") }}</label>
           <select id="calc-base" class="w-full h-full min-h-[4rem] bg-black border border-zinc-800 rounded-xl text-xl p-5 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer"></select>
         </div>
       </div>
@@ -72,25 +77,25 @@
   <section id="view-inventory" class="hidden w-full">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
       <div>
-        <h2 class="text-2xl font-light text-white">Product <strong class="font-bold text-emerald-500">Inventory</strong></h2>
-        <p class="text-zinc-500 text-sm">Manage assets and margins.</p>
+        <h2 class="text-2xl font-light text-white">{{ _("Product") }} <strong class="font-bold text-emerald-500">{{ _("Inventory") }}</strong></h2>
+        <p class="text-zinc-500 text-sm">{{ _("Manage assets and margins.") }}</p>
       </div>
       <div class="flex gap-2 w-full md:w-auto">
-        <input type="text" id="inv-search" placeholder="Search product..." class="w-full md:w-64 bg-black border border-zinc-800 rounded text-sm px-4 py-2 text-white focus:border-emerald-500 focus:outline-none" />
-        <button id="add-product-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors whitespace-nowrap shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50">+ Add Product</button>
+        <input type="text" id="inv-search" placeholder="{{ _('Search product...') }}" class="w-full md:w-64 bg-black border border-zinc-800 rounded text-sm px-4 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+        <button id="add-product-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors whitespace-nowrap shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50">+ {{ _("Add Product") }}</button>
       </div>
     </div>
     <div class="bg-black border border-zinc-800 rounded-xl overflow-hidden shadow-2xl p-4 md:p-0">
       <table class="hidden md:table w-full text-left text-sm whitespace-nowrap">
         <thead class="bg-zinc-900 border-b border-zinc-800 text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest">
           <tr>
-            <th class="px-6 py-4">Product Name</th>
-            <th class="px-6 py-4">Category</th>
-            <th class="px-6 py-4">Stock</th>
-            <th class="px-6 py-4">Cost Price</th>
-            <th class="px-6 py-4">Margin</th>
-            <th class="px-6 py-4">Sale Price</th>
-            <th class="px-6 py-4 text-right">Actions</th>
+            <th class="px-6 py-4">{{ _("Product Name") }}</th>
+            <th class="px-6 py-4">{{ _("Category") }}</th>
+            <th class="px-6 py-4">{{ _("Stock") }}</th>
+            <th class="px-6 py-4">{{ _("Cost Price") }}</th>
+            <th class="px-6 py-4">{{ _("Margin") }}</th>
+            <th class="px-6 py-4">{{ _("Sale Price") }}</th>
+            <th class="px-6 py-4 text-right">{{ _("Actions") }}</th>
           </tr>
         </thead>
         <tbody id="inv-table-body" class="divide-y divide-zinc-800/50 text-zinc-300"></tbody>
@@ -103,41 +108,41 @@
         <div id="modal-loading" class="hidden absolute inset-0 bg-zinc-950/80 backdrop-blur flex items-center justify-center z-10">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
         </div>
-        <h3 id="modal-title" class="text-xl font-light text-white mb-4">Add <strong class="font-bold text-emerald-500">Product</strong></h3>
+        <h3 id="modal-title" class="text-xl font-light text-white mb-4">{{ _("Add") }} <strong class="font-bold text-emerald-500">{{ _("Product") }}</strong></h3>
         <form id="product-form" class="space-y-4">
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Name</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Name") }}</label>
             <input type="text" id="prod-name" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
           </div>
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Category</label>
-            <input type="text" id="prod-category" placeholder="e.g. Hardware, Services..." class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Category") }}</label>
+            <input type="text" id="prod-category" placeholder="{{ _('e.g. Hardware, Services...') }}" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Cost Price</label>
+              <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Cost Price") }}</label>
               <input type="number" step="0.01" id="prod-cost" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
             </div>
             <div>
-              <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Currency</label>
+              <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Currency") }}</label>
               <select id="prod-currency" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none"></select>
             </div>
           </div>
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Margin (%)</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Margin (%)") }}</label>
             <input type="number" step="0.01" id="prod-margin" value="30.00" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
           </div>
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Stock Quantity</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Stock Quantity") }}</label>
             <input type="number" id="prod-stock" value="0" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
           </div>
           <div class="bg-zinc-900 border border-zinc-800 p-3 rounded text-center">
-            <span class="text-xs text-zinc-500 uppercase tracking-widest block mb-1">Estimated Sale Price</span>
+            <span class="text-xs text-zinc-500 uppercase tracking-widest block mb-1">{{ _("Estimated Sale Price") }}</span>
             <span id="live-price-preview" class="text-2xl font-mono text-emerald-400 font-bold">0.00</span>
           </div>
           <div class="flex justify-end gap-3 mt-6">
-            <button type="button" id="close-modal-btn" class="px-4 py-2 text-sm font-bold text-zinc-400 hover:text-white">Cancel</button>
-            <button type="submit" id="save-modal-btn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded">Save</button>
+            <button type="button" id="close-modal-btn" class="px-4 py-2 text-sm font-bold text-zinc-400 hover:text-white">{{ _("Cancel") }}</button>
+            <button type="submit" id="save-modal-btn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded">{{ _("Save") }}</button>
           </div>
         </form>
       </div>
@@ -148,89 +153,89 @@
   <section id="view-config" class="hidden w-full max-w-2xl mx-auto">
     <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 mb-8 shadow-2xl">
       <div class="flex justify-between items-center mb-6">
-        <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2"><span>📊</span> Cierre Diario</h3>
+        <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2"><span>📊</span> {{ _("Daily Report") }}</h3>
         <span class="text-xs font-mono text-zinc-500 bg-black px-2 py-1 rounded border border-zinc-800" id="report-date">YYYY-MM-DD</span>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="bg-black border border-red-900/30 p-4 rounded-lg">
-          <span class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1">Total Compras</span>
-          <span id="metric-purchases" class="text-xl font-mono text-red-400">Loading...</span>
+          <span class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1">{{ _("Total Purchases") }}</span>
+          <span id="metric-purchases" class="text-xl font-mono text-red-400">{{ _("Loading...") }}</span>
         </div>
         <div class="bg-black border border-emerald-900/30 p-4 rounded-lg">
-          <span class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1">Total Ventas</span>
-          <span id="metric-sales" class="text-xl font-mono text-emerald-400">Loading...</span>
+          <span class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1">{{ _("Total Sales") }}</span>
+          <span id="metric-sales" class="text-xl font-mono text-emerald-400">{{ _("Loading...") }}</span>
         </div>
         <div class="bg-black border border-cyber-500/30 p-4 rounded-lg relative overflow-hidden group">
           <div class="absolute inset-0 bg-emerald-500/5 group-hover:bg-emerald-500/10 transition-colors"></div>
-          <span class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1 relative z-10">Ganancia Neta</span>
-          <span id="metric-profit" class="text-2xl font-bold font-mono text-white relative z-10">Loading...</span>
+          <span class="text-[0.65rem] uppercase tracking-widest text-zinc-500 block mb-1 relative z-10">{{ _("Net Profit") }}</span>
+          <span id="metric-profit" class="text-2xl font-bold font-mono text-white relative z-10">{{ _("Loading...") }}</span>
         </div>
       </div>
     </div>
 
     <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 mb-8 shadow-2xl">
-      <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>💱</span> Currency Management</h3>
+      <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>💱</span> {{ _("Currency Management") }}</h3>
       <form id="config-currency-form" class="space-y-4 mb-6">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Code</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Code") }}</label>
             <input type="text" id="cur-code" maxlength="3" required placeholder="USD" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono uppercase focus:border-emerald-500 focus:outline-none" />
           </div>
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Name</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Name") }}</label>
             <input type="text" id="cur-name" required placeholder="US Dollar" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
           </div>
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Symbol</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Symbol") }}</label>
             <input type="text" id="cur-symbol" required placeholder="$" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
           </div>
         </div>
-        <button type="submit" id="config-currency-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">Add Currency</button>
+        <button type="submit" id="config-currency-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">{{ _("Add Currency") }}</button>
       </form>
       <div id="config-currency-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
     </div>
 
     <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 mb-8 shadow-2xl">
-      <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>📈</span> Exchange Rates</h3>
+      <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>📈</span> {{ _("Exchange Rates") }}</h3>
       <form id="config-rate-form" class="space-y-4 mb-6">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Currency</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Currency") }}</label>
             <select id="rate-currency-code" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"></select>
           </div>
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Rate</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Rate") }}</label>
             <input type="number" step="0.000001" id="rate-value" required placeholder="1.000000" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
           </div>
         </div>
-        <button type="submit" id="config-rate-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">Add Rate</button>
+        <button type="submit" id="config-rate-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">{{ _("Add Rate") }}</button>
       </form>
       <div id="config-rates-list" class="grid gap-2"></div>
     </div>
 
     <div class="mb-6">
-      <h2 class="text-2xl font-light text-white">System <strong class="font-bold text-emerald-500">Settings</strong></h2>
-      <p class="text-zinc-500 text-sm">Security and data management.</p>
+      <h2 class="text-2xl font-light text-white">{{ _("System") }} <strong class="font-bold text-emerald-500">{{ _("Settings") }}</strong></h2>
+      <p class="text-zinc-500 text-sm">{{ _("Security and data management.") }}</p>
     </div>
     <div class="space-y-6">
       <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
-        <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>🔒</span> Security</h3>
+        <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>🔒</span> {{ _("Security") }}</h3>
         <form id="config-pwd-form" class="space-y-4">
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">New PIN</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("New PIN") }}</label>
             <input type="password" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
           </div>
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Confirm PIN</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Confirm PIN") }}</label>
             <input type="password" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
           </div>
-          <button type="submit" class="w-full border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white font-bold text-sm px-4 py-2 rounded transition-colors">Update Credentials</button>
+          <button type="submit" class="w-full border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white font-bold text-sm px-4 py-2 rounded transition-colors">{{ _("Update Credentials") }}</button>
         </form>
       </div>
       <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
-        <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>💾</span> Data Backup</h3>
-        <p class="text-xs text-zinc-500 mb-4">Export all currencies, products, and transactions to a secure JSON file.</p>
-        <button id="config-export-btn" class="w-full bg-transparent border border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-black font-bold uppercase tracking-widest text-sm py-3 rounded transition-all shadow-[0_0_10px_rgba(16,185,129,0.1)]">Download JSON Backup</button>
+        <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>💾</span> {{ _("Data Backup") }}</h3>
+        <p class="text-xs text-zinc-500 mb-4">{{ _("Export all currencies, products, and transactions to a secure JSON file.") }}</p>
+        <button id="config-export-btn" class="w-full bg-transparent border border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-black font-bold uppercase tracking-widest text-sm py-3 rounded transition-all shadow-[0_0_10px_rgba(16,185,129,0.1)]">{{ _("Download JSON Backup") }}</button>
       </div>
     </div>
   </section>
@@ -238,28 +243,28 @@
   <!-- Reports View -->
   <section id="view-reports" class="hidden w-full">
     <div class="mb-6">
-      <h2 class="text-2xl font-light text-white">Transaction <strong class="font-bold text-emerald-500">Reports</strong></h2>
-      <p class="text-zinc-500 text-sm">Daily ledger with multi-currency conversion.</p>
+      <h2 class="text-2xl font-light text-white">{{ _("Transaction") }} <strong class="font-bold text-emerald-500">{{ _("Reports") }}</strong></h2>
+      <p class="text-zinc-500 text-sm">{{ _("Daily ledger with multi-currency conversion.") }}</p>
     </div>
     <div class="flex flex-col md:flex-row gap-4 mb-6">
       <div class="relative">
-        <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Filter by Date</label>
+        <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Filter by Date") }}</label>
         <input type="date" id="report-date-filter" class="bg-black border border-zinc-800 rounded px-4 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
       </div>
       <div class="flex items-end">
-        <button id="export-csv-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">Export CSV</button>
+        <button id="export-csv-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">{{ _("Export CSV") }}</button>
       </div>
     </div>
     <div class="hidden md:block overflow-x-auto w-full bg-black border border-zinc-800 rounded-xl">
       <table class="w-full text-left text-sm whitespace-nowrap">
         <thead class="bg-zinc-900 border-b border-zinc-800 text-[0.65rem] font-bold text-zinc-500 uppercase tracking-widest">
           <tr>
-            <th class="px-4 py-4">Time</th>
-            <th class="px-4 py-4">Product Name</th>
-            <th class="px-4 py-4">Type</th>
-            <th class="px-4 py-4">Qty</th>
-            <th class="px-4 py-4">Unit Price (Original)</th>
-            <th class="px-4 py-4">Converted Values</th>
+            <th class="px-4 py-4">{{ _("Time") }}</th>
+            <th class="px-4 py-4">{{ _("Product Name") }}</th>
+            <th class="px-4 py-4">{{ _("Type") }}</th>
+            <th class="px-4 py-4">{{ _("Qty") }}</th>
+            <th class="px-4 py-4">{{ _("Unit Price (Original)") }}</th>
+            <th class="px-4 py-4">{{ _("Converted Values") }}</th>
           </tr>
         </thead>
         <tbody id="report-table-body" class="divide-y divide-zinc-800/50 text-zinc-300"></tbody>
@@ -271,35 +276,35 @@
   <!-- Sales View -->
   <section id="view-sales" class="hidden w-full">
     <div class="mb-6">
-      <h2 class="text-2xl font-light text-white"><strong class="font-bold text-emerald-500">Registrar</strong> Venta</h2>
-      <p class="text-zinc-500 text-sm">Registra las ventas diarias y controla el inventario.</p>
+      <h2 class="text-2xl font-light text-white">{{ _("Register") }} <strong class="font-bold text-emerald-500">{{ _("Sale") }}</strong></h2>
+      <p class="text-zinc-500 text-sm">{{ _("Manage daily sales and inventory.") }}</p>
     </div>
     <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6 shadow-2xl">
       <form id="sales-form" class="space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Producto</label>
-            <input type="text" id="sales-product-search" placeholder="Buscar producto..." class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none mb-2" />
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Product") }}</label>
+            <input type="text" id="sales-product-search" placeholder="{{ _('Search product...') }}" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none mb-2" />
             <select id="sales-product" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"></select>
           </div>
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Cantidad</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Quantity") }}</label>
             <input type="number" id="sales-quantity" required min="1" step="1" placeholder="1" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
           </div>
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Precio Unitario</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Unit Price") }}</label>
             <input type="number" id="sales-unit-price" required min="0" step="0.01" placeholder="0.00" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
           </div>
           <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Moneda</label>
+            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Currency") }}</label>
             <select id="sales-currency" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"></select>
           </div>
         </div>
         <div>
-          <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">Comentario <span class="text-zinc-600">(opcional)</span></label>
-          <textarea id="sales-comment" rows="2" placeholder="Notas sobre la venta..." class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none resize-none"></textarea>
+          <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Comment") }} <span class="text-zinc-600">({{ _("optional") }})</span></label>
+          <textarea id="sales-comment" rows="2" placeholder="{{ _('Notes about the sale...') }}" class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono text-sm focus:border-emerald-500 focus:outline-none resize-none"></textarea>
         </div>
-        <button type="submit" id="sales-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">Registrar Venta</button>
+        <button type="submit" id="sales-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded transition-colors disabled:opacity-50">{{ _("Register Sale") }}</button>
         <div id="sales-message"></div>
       </form>
     </div>
@@ -307,6 +312,7 @@
 </main>
 {% endblock %}
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
 <script src="{{ url_for('static', filename='js/components.js') }}"></script>
 <script src="{{ url_for('static', filename='js/api-client.js') }}"></script>

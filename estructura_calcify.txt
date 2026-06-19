@@ -6,30 +6,34 @@ Calcify es una aplicación de escritorio para gestión de inventario y
 divisas (currency/inventory management) construida con Flask 3 +
 SQLAlchemy 2.0 bajo Clean Architecture (4 capas estrictas).
 
-- **Versión actual:** 0.7.0 (en desarrollo activo)
+- **Versión actual:** 0.9.0 (en desarrollo activo)
 - **Python:** 3.13+
 - **Framework web:** Flask 3.1.3
 - **ORM:** SQLAlchemy 2.0.49
 - **Base de datos:** SQLite (con migraciones automáticas vía Alembic 1.18.4)
-- **Backend tests:** Pytest 9.0.3 (108 tests)
+- **Internacionalización:** Flask-Babel 4.0 (Español e Inglés, detección automática + botón manual)
+- **Backend tests:** Pytest 9.0.3 (141 tests)
 - **Frontend tests:** Jest 29 + jsdom (78 tests)
 - **CSS:** Tailwind CSS 3.4 (build local vía npm)
-- **Cobertura backend:** 80% (892/1110 statements)
+- **Cobertura backend:** 90% (1021/1138 statements)
 
 ## 2. Estructura de Directorios
 
 ```
 Calcify/
-├── app.py                          # Application Factory
+├── app.py                          # Application Factory + i18n (Babel, locale selector, context processor)
+├── babel.cfg                       # Configuración de extractores Babel (Python + Jinja2)
 ├── run_coverage.py                 # Script de cobertura (cross-platform)
 ├── setup_security.py               # Bootstrap de seguridad (admin PIN + secret key)
 ├── reset_password.py               # CLI interactivo para reset de PIN
 ├── scaffold.py                     # Generador de estructura inicial
-├── requirements.txt                # Dependencias (20 paquetes)
+├── requirements.txt                # Dependencias (22 paquetes, incluye Flask-Babel + Babel)
 ├── AGENTS.md                       # Guía de arquitectura para asistentes IA
 ├── changelog.md                    # Historial de cambios (Keep a Changelog)
 ├── package.json                    # Frontend: npm scripts (build:css, test)
 ├── tailwind.config.js              # Tailwind content paths, fonts, cyber theme
+├── scripts/
+│   └── update_translations.sh      # Automatización: extraer → actualizar → compilar traducciones
 ├── domain/                         # CAPA 1: Domain (0 dependencias externas)
 │   ├── models.py                   #   Entidades: Currency, ExchangeRate, Product,
 │   │                               #              CurrencyRate, Transaction
@@ -53,15 +57,20 @@ Calcify/
 ├── presentation/                   # CAPA 4: Presentation (Flask Blueprints)
 │   ├── __init__.py                 #   Package marker
 │   ├── api/
-│   │   ├── auth.py                 #   auth_bp: /login, /logout, @login_required
-│   │   └── routes.py               #   api_bp: 16 endpoints REST
+│   │   ├── auth.py                 #   auth_bp: /login, /logout, @login_required (strings i18n)
+│   │   └── routes.py               #   api_bp: 16 endpoints REST + 2 locale endpoints (strings i18n)
 │   ├── web/
 │   │   ├── __init__.py             #   Package marker
 │   │   └── routes.py               #   web_bp: / (index), /login (GET)
 │   └── templates/
-│       ├── base.html               #   Template base con bloques (title, content, scripts, extra_css)
-│       ├── index.html              #   {% extends "base.html" %} — SPA (Tailwind CSS)
-│       └── login.html              #   {% extends "base.html" %} — Login con tema cyberpunk
+│       ├── base.html               #   Template base con bloques (lang dinámico, locale_data, title, content, scripts)
+│       ├── index.html              #   {% extends "base.html" %} — SPA con textos traducibles + botón EN/ES
+│       └── login.html              #   {% extends "base.html" %} — Login con textos traducibles
+├── translations/                   # Catálogos de traducción Babel
+│   └── es/
+│       └── LC_MESSAGES/
+│           ├── messages.po         #   Traducciones al español (200+ cadenas)
+│           └── messages.mo         #   Compilado binario
 ├── static/                         # Frontend assets (Tailwind local build)
 │   ├── src/
 │   │   └── input.css               #   Entrada Tailwind: directivas + custom overrides
@@ -75,18 +84,19 @@ Calcify/
 │   │   ├── config.css              #     Estilos de configuración (monedas, tasas)
 │   │   ├── reports.css             #     Estilos del reporte de transacciones
 │   │   └── sales.css               #     Estilos del registro de ventas
-│   └── js/                         #   JS plano (sin módulos, compatibilidad con onclick HTML)
-│       ├── utils.js                #     formatMoney, truncate, escapeHtml, formatDate, getBaseCurrency, getInverseRate
+│   └── js/                         #   JS plano (11 archivos, sin módulos)
+│       ├── i18n.js                 #     __(key), __locale — función de traducción global
+│       ├── utils.js                #     formatMoney (locale-aware), truncate, escapeHtml, formatDate, getBaseCurrency, getInverseRate
 │       ├── components.js           #     showMessage, loadingIndicator, renderCurrencySelect, refreshApp
 │       ├── api-client.js           #     ApiClient.get/post/put/delete con error handling y 401 redirect
-│       ├── app.js                  #     App: init/bootstrap con Promise.all, manejo de errores de red
-│       ├── login.js                #     LoginView: submit por PIN, loading state, feedback de error
+│       ├── app.js                  #     App: init/bootstrap con Promise.all, status Online/Offline traducible
+│       ├── login.js                #     LoginView: submit por PIN, textos traducibles
 │       ├── calculator.js           #     CalculatorView: init con selects, render de conversiones multi-moneda
-│       ├── inventory.js            #     InventoryView: CRUD con modals, filtro por categoría, stock badges
-│       ├── config.js               #     ConfigView: gestión de monedas (base, CRUD), tasas, export backup
-│       ├── reports.js              #     ReportView: filtro por fecha, tabla con valores convertidos, export CSV
-│       └── sales.js                #     SalesView: form de venta con search de productos, validación de stock
-├── tests/                          # 108 tests backend + 78 tests frontend
+│       ├── inventory.js            #     InventoryView: CRUD con modals, filtro, textos traducibles
+│       ├── config.js               #     ConfigView: gestión de monedas/tasas, textos traducibles
+│       ├── reports.js              #     ReportView: filtro por fecha, tabla, CSV export, textos traducibles
+│       └── sales.js                #     SalesView: form de venta, textos traducibles
+├── tests/                          # 141 tests backend + 78 tests frontend
 │   ├── conftest.py                 #   Fixtures: db_engine, db_session, client
 │   ├── domain/
 │   │   ├── test_models.py          #   1 test (Product entity)
@@ -96,16 +106,19 @@ Calcify/
 │   │   └── test_currency_conversion.py # 10 tests (CurrencyConversionUseCase)
 │   ├── infrastructure/
 │   │   ├── test_auto_migrate.py    #   9 tests (bootstrap_migrations)
+│   │   ├── test_migrations.py      #   2 tests (run_migrations)
+│   │   ├── test_session.py         #   5 tests (platform paths)
 │   │   ├── test_repositories.py    #   3 tests (repositorios)
 │   │   ├── test_config_repository.py # 3 tests (config repo)
 │   │   └── test_transaction_repository.py # 3 tests (transaction repo)
 │   ├── presentation/
-│   │   └── test_routes.py          #   51 tests (endpoints API)
+│   │   ├── test_app.py             #  10 tests (app factory, i18n)
+│   │   └── test_routes.py          #  65 tests (endpoints API)
 │   ├── test_currency_converter.py  #   5 tests (legacy converter)
 │   ├── test_product.py             #   4 tests (Product domain)
 │   └── frontend/                   # Tests Jest con jsdom (78 tests)
 │       ├── jest.config.js          #   Config: jsdom, rootDir, setupFiles, moduleNameMapper (CSS mock)
-│       ├── setup.js                #   Mock de localStorage, fix de console.error
+│       ├── setup.js                #   Mock de localStorage, fix de console.error, mocks i18n (__(), _t, __locale)
 │       ├── __mocks__/
 │       │   └── styleMock.js        #   Mock vacío para imports de CSS en tests
 │       ├── utils.test.js           #   formatMoney, truncate, escapeHtml, getInverseRate, getBaseCurrency
@@ -118,7 +131,7 @@ Calcify/
 │       ├── sales.test.js           #   SalesView: init selects, filterProducts, placeholder, submit error
 │       └── app.test.js             #   AppView: bootstrap con API failure, console.error en red
 ├── iniciar_debian.sh               # Launcher Linux
-└── instalar_y_correr.bat           # Launcher Windows
+└── instalar_y_correr.bat           # Launcher Windows (mensajes en inglés)
 ```
 
 ## 3. Capas de Arquitectura (Clean Architecture)
@@ -189,7 +202,7 @@ Reglas estrictas de dependencia (una vía, de afuera hacia adentro):
 | CurrencyConversionUseCase | execute(source_code, target_code, amount) | Convierte moneda a través de la moneda base usando inverse_rates |
 | ExportBackupUseCase | execute() | Exporta todos los datos (currencies, products, transactions) como dict serializable |
 
-## 7. API REST (presentation/api/routes.py) — 16 endpoints
+## 7. API REST (presentation/api/routes.py) — 18 endpoints
 
 | Método | Ruta | Función | Propósito |
 |--------|------|---------|-----------|
@@ -208,7 +221,9 @@ Reglas estrictas de dependencia (una vía, de afuera hacia adentro):
 | POST | /api/v1/sales | register_sale | Registra venta (reduce stock + crea OUT) |
 | PUT | /api/v1/currencies/<code>/set_main | set_main_currency | Designa moneda base |
 | DELETE | /api/v1/products/<id> | delete_product | Elimina producto |
-| GET | /api/v1/backup/export | export_backup | Exporta backup como JSON (descarga) |
+| GET | /api/v1/backup/export | export_backup | Exporta backup como JSON (descarga, nombre calcify_backup_) |
+| **GET** | **/api/v1/locale/<locale>** | set_locale | Cambia idioma via URL y redirige |
+| **POST** | **/api/v1/locale** | set_locale_json | Cambia idioma via JSON |
 
 ## 8. Autenticación (presentation/api/auth.py)
 
@@ -250,7 +265,37 @@ bootstrap_migrations(db_url, metadata) ejecuta en cada boot:
    (DROP alembic_version + nueva baseline + stamp), otros (re-raise)
 9. Genera schema_trace.sql (DDL offline dump)
 
-## 11. Frontend Architecture
+## 11. Internacionalización (i18n)
+
+### Arquitectura
+- **Backend:** Flask-Babel 4.0 con locale_selector que prioriza:
+  1. `session["locale"]` — selección manual del usuario
+  2. `request.accept_languages.best_match(["en", "es"])` — automático (navegador)
+  3. `"en"` — fallback por defecto
+- **Frontend:** Función global `__(key)` respaldada por objeto `_t` inyectado desde Flask via template
+- **Catálogos:** Babel `.po`/`.mo` en `translations/es/LC_MESSAGES/`
+
+### Locale selector (UI)
+- Botón EN/ES en navbar del header (cambia `session["locale"]`)
+- `GET /api/v1/locale/<locale>` — redirect a referrer
+- `POST /api/v1/locale` — JSON `{"locale": "es"}`
+
+### Strings traducibles
+- Templates Jinja2: `{{ _("Calculator") }}`, `{{ _("Sales") }}`, etc.
+- Python API: `_("Invalid or missing JSON payload.")` con soporte `%(var)s`
+- JavaScript: `__("register_sale")`, `__("no_products")`, etc.
+
+### Cobertura
+- ~200 cadenas traducidas al español (backend + frontend + templates)
+- 100% de strings de usuario envueltos en `_()` o `__()`
+- `formatMoney()` usa `__locale` (locale-aware Intl.NumberFormat)
+
+### Actualizar traducciones
+```bash
+bash scripts/update_translations.sh
+```
+
+## 12. Frontend Architecture
 
 ### CSS (7 archivos, carga secuencial en base.html)
 
@@ -264,14 +309,15 @@ bootstrap_migrations(db_url, metadata) ejecuta en cada boot:
 | `static/css/reports.css` | Tabla de transacciones, resumen de tarjetas |
 | `static/css/sales.css` | Formulario de venta, search de productos |
 
-### JS (10 archivos, plano sin módulos ES)
+### JS (11 archivos, plano sin módulos ES)
 
-Cargados en `base.html` en orden de dependencia (utils → components → api-client → app → vistas).
+Cargados en `base.html` en orden de dependencia (i18n → utils → components → api-client → app → vistas).
 No usan `import`/`export` porque los templates HTML referencian funciones globales via `onclick`.
 
 | Archivo | API pública | Dependencias |
 |---------|-------------|-------------|
-| `utils.js` | `formatMoney()`, `truncate()`, `escapeHtml()`, `formatDate()`, `getBaseCurrency()`, `getInverseRate()` | — |
+| `i18n.js` | `__(key)`, `__locale` | — |
+| `utils.js` | `formatMoney()` (locale-aware), `truncate()`, `escapeHtml()`, `formatDate()`, `getBaseCurrency()`, `getInverseRate()` | i18n |
 | `components.js` | `showMessage()`, `loadingIndicator()`, `renderCurrencySelect()`, `refreshApp()` | utils |
 | `api-client.js` | `ApiClient.get()`, `.post()`, `.put()`, `.delete()` | — |
 | `app.js` | `App.init()`, `App.state` (currencies, products, rates, transactions) | utils, components, api-client |
@@ -292,7 +338,7 @@ No usan `import`/`export` porque los templates HTML referencian funciones global
 
 - 78 tests, 9 suites, sin dependencias externas (mocks manuales de fetch/DOM)
 - Patrón `(0, eval)(code)` para cargar scripts planos en scope global de Jest
-- Setup: `localStorage` mock, `console.error` preservado, CSS mock (`styleMock.js`)
+- Setup: `localStorage` mock, `console.error` preservado, CSS mock (`styleMock.js`), **mocks i18n** (`__()`, `_t`, `__locale`)
 - Cobertura defensiva: estados vacíos, errores HTTP (401, 500), network failure, NaN, negativos, caracteres especiales, elementos DOM faltantes, placeholders sin resultados
 
 ```bash
@@ -317,8 +363,9 @@ npm test
 | 12 | Factory Method (Session) | Fixture db_engine con StaticPool |
 | 13 | Upsert (Merge) | session.merge() para currencies y config |
 | 14 | Lookup-Then-Update | Productos y transacciones: query + update explícito |
+| **15** | **i18n (Flask-Babel + JS global)** | **app.py (locale_selector, context_processor), i18n.js (función __()), .po/.mo** |
 
-## 14. Tests (186 tests: 108 backend + 78 frontend)
+## 14. Tests (219 tests: 141 backend + 78 frontend)
 
 ### Backend Fixtures (conftest.py)
 - db_engine (session scope): SQLite in-memory con StaticPool
@@ -329,6 +376,7 @@ npm test
 - jsdom environment para simular DOM del navegador
 - localStorage mock (getItem/setItem/removeItem/clear)
 - CSS mock (styleMock.js) para evitar errores de import
+- **i18n mocks: `global.__()`, `global._t`, `global.__locale`**
 - Patrón `(0, eval)(code)` para cargar JS plano en scope global
 
 ### Distribución
@@ -340,10 +388,13 @@ npm test
 | tests/use_cases/test_sales.py | 9 | use_cases/sales.py (100%) |
 | tests/use_cases/test_currency_conversion.py | 10 | use_cases/currency_conversion.py (95%) |
 | tests/infrastructure/test_auto_migrate.py | 9 | auto_migrate.py (81%) |
+| tests/infrastructure/test_migrations.py | 2 | migrations.py (93%) |
+| tests/infrastructure/test_session.py | 5 | session.py (100%) |
 | tests/infrastructure/test_repositories.py | 3 | sqlalchemy_repos.py (93%) |
 | tests/infrastructure/test_config_repository.py | 3 | config repo (100%) |
 | tests/infrastructure/test_transaction_repository.py | 3 | transaction repo (implícito) |
-| tests/presentation/test_routes.py | 51 | routes.py (76%), auth.py (86%) |
+| tests/presentation/test_app.py | 10 | app.py (81%), i18n (locale selector) |
+| tests/presentation/test_routes.py | 65 | routes.py (95%), auth.py (87%) |
 | tests/test_currency_converter.py | 5 | legacy converter (100%) |
 | tests/test_product.py | 4 | domain/models.py (91%) |
 | tests/frontend/utils.test.js | 16 | formatMoney, truncate, escapeHtml, formatDate, getBaseCurrency, getInverseRate |
@@ -356,11 +407,11 @@ npm test
 | tests/frontend/sales.test.js | 7 | SalesView init, filterProducts, placeholder, submit error |
 | tests/frontend/app.test.js | 8 | AppView bootstrap con API failure, console.error en red |
 
-### Cobertura backend por archivo (80% total)
+### Cobertura backend por archivo (90% total)
 
 | Archivo | Statements | Cobertura |
 |---------|-----------|-----------|
-| app.py | 92 | 64% |
+| app.py | 118 | 81% |
 | domain/__init__.py | 0 | 100% |
 | domain/exceptions.py | 2 | 100% |
 | domain/models.py | 67 | 91% |
@@ -368,22 +419,23 @@ npm test
 | domain/services/currency_converter.py | 11 | 100% |
 | infrastructure/database/__init__.py | 0 | 100% |
 | infrastructure/database/auto_migrate.py | 155 | 81% |
-| infrastructure/database/migrations.py | 28 | 29% |
+| infrastructure/database/migrations.py | 28 | 93% |
 | infrastructure/database/models.py | 44 | 100% |
-| infrastructure/database/session.py | 20 | 70% |
+| infrastructure/database/session.py | 20 | 100% |
 | infrastructure/repositories/__init__.py | 0 | 100% |
 | infrastructure/repositories/interfaces.py | 63 | 71% |
 | infrastructure/repositories/sqlalchemy_repos.py | 118 | 93% |
+| presentation/__init__.py | 0 | 100% |
 | presentation/api/__init__.py | 0 | 100% |
-| presentation/api/auth.py | 44 | 86% |
-| presentation/api/routes.py | 344 | 76% |
+| presentation/api/auth.py | 45 | 87% |
+| presentation/api/routes.py | 345 | 95% |
 | presentation/web/__init__.py | 0 | 100% |
 | presentation/web/routes.py | 10 | 80% |
 | use_cases/__init__.py | 0 | 100% |
 | use_cases/currency_conversion.py | 41 | 95% |
 | use_cases/export_backup.py | 22 | 100% |
 | use_cases/sales.py | 28 | 100% |
-| **TOTAL** | **1110** | **80%** |
+| **TOTAL** | **1138** | **90%** |
 
 ### Cómo ejecutar
 
@@ -402,18 +454,21 @@ npm test
 
 # Build Tailwind CSS
 npm run build:css
+
+# Actualizar traducciones
+bash scripts/update_translations.sh
 ```
 
 ## 15. Dependencias (requirements.txt + package.json)
 
 ### requirements.txt (backend)
 
-alembic==1.18.4, blinker==1.9.0, bottle==0.13.4, click==8.4.1,
-Flask==3.1.3, greenlet==3.5.1, iniconfig==2.3.0, itsdangerous==2.2.0,
-Jinja2==3.1.6, Mako==1.3.12, MarkupSafe==3.0.3, packaging==26.2,
-pluggy==1.6.0, proxy_tools==0.1.0, Pygments==2.20.0, pytest==9.0.3,
-pytest-cov==6.1.1, pywebview==6.2.1, SQLAlchemy==2.0.49,
-typing_extensions==4.15.0, Werkzeug==3.1.8
+alembic==1.18.4, **Babel>=2.14.0**, blinker==1.9.0, bottle==0.13.4,
+click==8.4.1, Flask==3.1.3, **Flask-Babel>=4.0.0**, greenlet==3.5.1,
+iniconfig==2.3.0, itsdangerous==2.2.0, Jinja2==3.1.6, Mako==1.3.12,
+MarkupSafe==3.0.3, packaging==26.2, pluggy==1.6.0, proxy_tools==0.1.0,
+Pygments==2.20.0, pytest==9.0.3, pytest-cov==6.1.1, pywebview==6.2.1,
+SQLAlchemy==2.0.49, typing_extensions==4.15.0, Werkzeug==3.1.8
 
 ### package.json (frontend dev)
 
@@ -435,10 +490,10 @@ typing_extensions==4.15.0, Werkzeug==3.1.8
 
 - Linux: iniciar_debian.sh (verifica Python/venv, instala deps, resuelve IP LAN)
 - Windows: instalar_y_correr.bat (auto-instala Python si falta, elevación admin,
-  lanzamiento automático de navegador)
+  lanzamiento automático de navegador, mensajes en inglés)
 - macOS: no tiene launcher dedicado pero funciona con python app.py
 
-## 17. Estado del Proyecto (2026-06-14)
+## 17. Estado del Proyecto (2026-06-18)
 
 ### Funcionalidades completadas
 - [x] CRUD completo de productos, monedas, tasas de cambio y transacciones
@@ -446,21 +501,26 @@ typing_extensions==4.15.0, Werkzeug==3.1.8
 - [x] Registro de ventas con validación de stock
 - [x] Autenticación por PIN con hash (Werkzeug)
 - [x] Migraciones automáticas de esquema (Alembic + ALTER TABLE fallback)
-- [x] Exportación de backup JSON
-- [x] Reporte de cobertura (80%) con pytest-cov
+- [x] Exportación de backup JSON (nombre calcify_backup_)
+- [x] Reporte de cobertura (90%) con pytest-cov
 - [x] Recuperación de revisiones huérfanas de Alembic (Can't locate revision)
 - [x] Paths OS-agnósticos (Windows %APPDATA%, Linux ~/.config, macOS ~/Library)
 - [x] Filtro por fecha en transacciones
 - [x] SPA con Tailwind CSS (gestión, calculadora, reportes, ventas)
-- [x] Frontend modular: 10 JS + 7 CSS con template inheritance (base.html)
+- [x] Frontend modular: 11 JS + 7 CSS con template inheritance (base.html)
 - [x] Tailwind CSS local build vía npm (no CDN)
 - [x] 78 tests frontend con Jest + jsdom (cobertura defensiva completa)
 - [x] Patrón (0, eval)(code) para testing de JS plano sin módulos
+- [x] **Internacionalización: Flask-Babel + función __() global en JS**
+- [x] **Selector de idioma automático (Accept-Language) + manual (botón EN/ES)**
+- [x] **200+ cadenas traducidas al español (backend, templates, JS)**
+- [x] **Archivos de launcher Windows en inglés**
+- [x] **Nombre de backup cambiado a calcify_backup_**
 
-### Pendientes / Áreas con baja cobertura
-- [ ] app.py (64%) — paths de producción no probados (create_engine real, seguridad,
-      error handlers globales, bloque __main__)
-- [ ] migrations.py (29%) — run_migrations() no se llama en tests (usa auto_migrate)
-- [ ] session.py (70%) — paths de Windows/macOS no probados en CI Linux
-- [ ] routes.py (76%) — algunos handlers de error 500 no ejercitados
-- [ ] interfaces.py (71%) — statements "pass" en métodos abstractos (inherente)
+### Pendientes / Áreas con baja cobertura (COMPLETADAS en v0.9.0)
+- [x] app.py (81%) — paths de producción, locale selector, non-HTTP error handler probados
+- [x] migrations.py (93%) — run_migrations() con/sin alembic_ini
+- [x] session.py (100%) — Windows/macOS/Linux platform branching
+- [x] routes.py (95%) — 16 handlers de error 500 ejercitados
+- [x] interfaces.py (71%) — aceptado como falso positivo (pass en abstractos)
+- [x] CLI scripts — mantenidos en inglés por decisión de diseño

@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+(No changes yet.)
+
+## [0.9.0] - 2026-06-18
+
+### Added
+
+- **Testing:** Backend coverage increased from 80% to 90% (1021/1138 statements) — 33 new tests in 4 files. app.py 64%→81%, migrations.py 29%→93%, session.py 70%→100%, routes.py 76%→95%.
+- **Testing:** `tests/infrastructure/test_session.py` — 5 unit tests for platform branching (Windows %APPDATA%, macOS ~/Library, Linux XDG/default).
+- **Testing:** `tests/infrastructure/test_migrations.py` — 2 tests for `run_migrations()` with/without `alembic.ini` file.
+- **Testing:** `tests/presentation/test_app.py` — 10 tests for app factory (get_locale 3 scenarios, set_locale JSON 3, set_locale GET 2, non-HTTP error handler, production path with real create_engine).
+- **Testing:** 16 new error handlers in `test_routes.py` covering all `except Exception` blocks (65 total tests in routes).
 - **Frontend:** Monolith refactored into 7 CSS files by view (`static/css/base.css`, `login.css`, `calculator.css`, `inventory.css`, `config.css`, `reports.css`, `sales.css`) — loaded selectively via `{% block extra_css %}` from `base.html`.
 - **Frontend:** Monolith refactored into 10 JS plain scripts (no ES modules) exposing global vars for `onclick` HTML compatibility: `utils.js`, `components.js`, `api-client.js`, `app.js`, `login.js`, `calculator.js`, `inventory.js`, `config.js`, `reports.js`, `sales.js`.
 - **Frontend:** `presentation/templates/base.html` — Jinja2 base template with blocks `title`, `body_class`, `content`, `scripts`, `extra_css`. Both `login.html` and `index.html` now `{% extends "base.html" %}`.
@@ -19,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Ops:** `.gitignore` — added `node_modules/`, `.vscode/`, `.idea/`, `.DS_Store`, `Thumbs.db`.
 - **Docs:** `estructura_calcify.txt` — added frontend architecture section (CSS/JS/Tailwind/test details), updated directory tree with `static/`, `tests/frontend/`, `package.json`, `tailwind.config.js`.
 - **Docs:** `AGENTS.md` — added frontend key files, conventions (plain JS, CSS-per-view, Tailwind local build, indirect eval), and 5 new design patterns (SPA Bootstrap, Module-as-View, Indirect Eval, CSS-per-View, Defensive JS).
-
 - **Infrastructure:** Alembic stale revision recovery — `bootstrap_migrations` now detects `CommandError: Can't locate revision`, drops the stale `alembic_version` row, creates a baseline migration, and re-stamps the DB (`infrastructure/database/auto_migrate.py:200-210`).
 - **Infrastructure:** `pytest-cov==6.1.1` added to `requirements.txt` for test coverage measurement.
 - **Testing:** 17 new integration tests for routes + auth, raising total from 91 to 108 tests (`tests/presentation/test_routes.py`).
@@ -33,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Testing:** `test_get_transactions_invalid_date` — bad `?date=` filter returns 400.
 - **Ops:** `run_coverage.py` — cross-platform Python script that runs pytest with coverage and opens the HTML report (`--cov=domain --cov=use_cases --cov=infrastructure --cov=presentation --cov=app --cov-report=term --cov-report=html`).
 - **Docs:** `estructura_calcify.txt` — comprehensive project state report (15 sections) for AI PM context, with architecture, endpoints, DB schema, patterns, coverage status, and test inventory.
+- **Docs:** `estructura_calcify.txt` — updated to v0.9.0 with 90% coverage, 141 backend tests, new test files, pendientes marked completed.
 
 ### Changed
 

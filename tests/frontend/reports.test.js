@@ -56,7 +56,7 @@ describe("ReportView", () => {
     ReportView.tbody = document.getElementById("report-table-body");
     ReportView.transactions = [];
     ReportView.render();
-    expect(document.getElementById("report-table-body").innerHTML).toContain("No transactions for this date");
+    expect(document.getElementById("report-table-body").innerHTML).toContain("no_transactions");
   });
 
   it("renders transactions with converted values", () => {
@@ -105,7 +105,7 @@ describe("ReportView", () => {
     ReportView.transactions = [];
     ReportView.dateInput = document.getElementById("report-date-filter");
     ReportView.exportCSV();
-    expect(global.alert).toHaveBeenCalledWith("No data to export.");
+    expect(global.alert).toHaveBeenCalledWith("no_data_export");
   });
 
   it("shows error state on API failure", async () => {
@@ -116,6 +116,6 @@ describe("ReportView", () => {
     ReportView.dateInput = document.getElementById("report-date-filter");
     ReportView.dateInput.value = "2026-06-14";
     await ReportView.fetchAndRender();
-    expect(document.getElementById("report-table-body").innerHTML).toContain("Failed to load transactions");
+    expect(document.getElementById("report-table-body").innerHTML).toContain("failed_load_transactions");
   });
 });
