@@ -6,14 +6,14 @@ Calcify es una aplicación de escritorio para gestión de inventario y
 divisas (currency/inventory management) construida con Flask 3 +
 SQLAlchemy 2.0 bajo Clean Architecture (4 capas estrictas).
 
-- **Versión actual:** 0.9.0 (en desarrollo activo)
+- **Versión actual:** 0.9.1 (en desarrollo activo)
 - **Python:** 3.13+
 - **Framework web:** Flask 3.1.3
 - **ORM:** SQLAlchemy 2.0.49
 - **Base de datos:** SQLite (con migraciones automáticas vía Alembic 1.18.4)
 - **Internacionalización:** Flask-Babel 4.0 (Español e Inglés, detección automática + botón manual)
-- **Backend tests:** Pytest 9.0.3 (141 tests)
-- **Frontend tests:** Jest 29 + jsdom (78 tests)
+- **Backend tests:** Pytest 9.0.3 (142 tests)
+- **Frontend tests:** Jest 29 + jsdom (80 tests)
 - **CSS:** Tailwind CSS 3.4 (build local vía npm)
 - **Cobertura backend:** 90% (1021/1138 statements)
 
@@ -39,8 +39,8 @@ Calcify/
 │   │                               #              CurrencyRate, Transaction
 │   ├── exceptions.py               #   InvalidExchangeRateError
 │   └── services/
-│       ├── __init__.py             #   CurrencyConverter (legacy, con ExchangeRate)
-│       └── currency_converter.py   #   CurrencyConverter.convert() (inverse-rate)
+│       ├── __init__.py             #   CurrencyConverter (instance method con ExchangeRate)
+│       └── currency_converter.py   #   CurrencyConverter.convert() (inverse-rate, Decimal)
 ├── use_cases/                      # CAPA 2: Use Cases (solo interfaces abstractas)
 │   ├── sales.py                    #   RegisterSaleUseCase
 │   ├── currency_conversion.py      #   CurrencyConversionUseCase
@@ -90,13 +90,13 @@ Calcify/
 │       ├── components.js           #     showMessage, loadingIndicator, renderCurrencySelect, refreshApp
 │       ├── api-client.js           #     ApiClient.get/post/put/delete con error handling y 401 redirect
 │       ├── app.js                  #     App: init/bootstrap con Promise.all, status Online/Offline traducible
-│       ├── login.js                #     LoginView: submit por PIN, textos traducibles
+│       ├── login.js                #     LoginView: submit por PIN via ApiClient.post, textos traducibles
 │       ├── calculator.js           #     CalculatorView: init con selects, render de conversiones multi-moneda
 │       ├── inventory.js            #     InventoryView: CRUD con modals, filtro, textos traducibles
 │       ├── config.js               #     ConfigView: gestión de monedas/tasas, textos traducibles
 │       ├── reports.js              #     ReportView: filtro por fecha, tabla, CSV export, textos traducibles
 │       └── sales.js                #     SalesView: form de venta, textos traducibles
-├── tests/                          # 141 tests backend + 78 tests frontend
+├── tests/                          # 142 tests backend + 80 tests frontend
 │   ├── conftest.py                 #   Fixtures: db_engine, db_session, client
 │   ├── domain/
 │   │   ├── test_models.py          #   1 test (Product entity)
@@ -364,8 +364,10 @@ npm test
 | 13 | Upsert (Merge) | session.merge() para currencies y config |
 | 14 | Lookup-Then-Update | Productos y transacciones: query + update explícito |
 | **15** | **i18n (Flask-Babel + JS global)** | **app.py (locale_selector, context_processor), i18n.js (función __()), .po/.mo** |
+| 16 | Structural Test (Type Inspection) | test_currency_converter.test_no_float_type_hints_in_domain_services — inspect.signature en el dominio |
+| 17 | Centralized HTTP Layer (ApiClient) | login.js, inventory.js, config.js — todos migrados a ApiClient público (no raw fetch ni _request) |
 
-## 14. Tests (219 tests: 141 backend + 78 frontend)
+## 14. Tests (222 tests: 142 backend + 80 frontend)
 
 ### Backend Fixtures (conftest.py)
 - db_engine (session scope): SQLite in-memory con StaticPool
@@ -383,7 +385,7 @@ npm test
 
 | Archivo | Tests | Cobertura que aporta |
 |---------|-------|---------------------|
-| tests/domain/test_currency_converter.py | 12 | domain/services/ (100%) |
+| tests/domain/test_currency_converter.py | 13 | domain/services/ (100%) |
 | tests/domain/test_models.py | 1 | domain/models.py (91%) |
 | tests/use_cases/test_sales.py | 9 | use_cases/sales.py (100%) |
 | tests/use_cases/test_currency_conversion.py | 10 | use_cases/currency_conversion.py (95%) |
@@ -399,10 +401,10 @@ npm test
 | tests/test_product.py | 4 | domain/models.py (91%) |
 | tests/frontend/utils.test.js | 16 | formatMoney, truncate, escapeHtml, formatDate, getBaseCurrency, getInverseRate |
 | tests/frontend/api-client.test.js | 8 | ApiClient.get/post/put/delete, HTTP errors, network failure |
-| tests/frontend/login.test.js | 5 | LoginView submit, PIN incorrecto, campos vacíos |
+| tests/frontend/login.test.js           | 5 | LoginView via ApiClient.post, errores, empty PIN, network error |
 | tests/frontend/calculator.test.js | 6 | CalculatorView init, render, moneda base faltante, tasas ausentes |
-| tests/frontend/inventory.test.js | 12 | InventoryView render, CRUD modals, stock bajo, API error |
-| tests/frontend/config.test.js | 8 | ConfigView render monedas/tasas, Main badge, Set Base, empty states |
+| tests/frontend/inventory.test.js       | 13 | InventoryView render, CRUD modals, stock bajo, API error, ApiClient.put |
+| tests/frontend/config.test.js          | 9 | ConfigView render monedas/tasas, Main badge, Set Base, empty states, ApiClient.put |
 | tests/frontend/reports.test.js | 8 | ReportsView init, render tabla, export CSV, API failure |
 | tests/frontend/sales.test.js | 7 | SalesView init, filterProducts, placeholder, submit error |
 | tests/frontend/app.test.js | 8 | AppView bootstrap con API failure, console.error en red |
@@ -415,7 +417,7 @@ npm test
 | domain/__init__.py | 0 | 100% |
 | domain/exceptions.py | 2 | 100% |
 | domain/models.py | 67 | 91% |
-| domain/services/__init__.py | 21 | 86% |
+| domain/services/__init__.py | 16 | 100% |
 | domain/services/currency_converter.py | 11 | 100% |
 | infrastructure/database/__init__.py | 0 | 100% |
 | infrastructure/database/auto_migrate.py | 155 | 81% |
@@ -435,7 +437,7 @@ npm test
 | use_cases/currency_conversion.py | 41 | 95% |
 | use_cases/export_backup.py | 22 | 100% |
 | use_cases/sales.py | 28 | 100% |
-| **TOTAL** | **1138** | **90%** |
+| **TOTAL** | **1133** | **90%** |
 
 ### Cómo ejecutar
 
@@ -493,7 +495,7 @@ SQLAlchemy==2.0.49, typing_extensions==4.15.0, Werkzeug==3.1.8
   lanzamiento automático de navegador, mensajes en inglés)
 - macOS: no tiene launcher dedicado pero funciona con python app.py
 
-## 17. Estado del Proyecto (2026-06-18)
+## 17. Estado del Proyecto (2026-06-19)
 
 ### Funcionalidades completadas
 - [x] CRUD completo de productos, monedas, tasas de cambio y transacciones
@@ -516,6 +518,10 @@ SQLAlchemy==2.0.49, typing_extensions==4.15.0, Werkzeug==3.1.8
 - [x] **200+ cadenas traducidas al español (backend, templates, JS)**
 - [x] **Archivos de launcher Windows en inglés**
 - [x] **Nombre de backup cambiado a calcify_backup_**
+- [x] **Eliminado código muerto con float en dominio (`convert_with_rates()` — v0.9.1)**
+- [x] **Login migrado a `ApiClient.post` en vez de `fetch()` crudo (v0.9.1)**
+- [x] **Inventory y Config migrados a `ApiClient.put` en vez de `_request()` privado (v0.9.1)**
+- [x] **Test estructural de anotaciones float en dominio (v0.9.1)**
 
 ### Pendientes / Áreas con baja cobertura (COMPLETADAS en v0.9.0)
 - [x] app.py (81%) — paths de producción, locale selector, non-HTTP error handler probados

@@ -73,10 +73,7 @@ var InventoryView = {
 
       try {
         if (InventoryView.editingId) {
-          await ApiClient._request("/api/v1/products/" + InventoryView.editingId, {
-            method: "PUT",
-            body: JSON.stringify(payload),
-          });
+          await ApiClient.put("/api/v1/products/" + InventoryView.editingId, payload);
         } else {
           payload.id = crypto.randomUUID();
           await ApiClient.post("/api/v1/products", payload);

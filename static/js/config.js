@@ -88,7 +88,7 @@ var ConfigView = {
 
   setMainCurrency: async function(code) {
     try {
-      await ApiClient._request("/api/v1/currencies/" + code + "/set_main", { method: "PUT" });
+      await ApiClient.put("/api/v1/currencies/" + code + "/set_main");
       var res = await ApiClient.get("/api/v1/currencies");
       App.state.currencies = res.data;
       this.renderCurrencies();

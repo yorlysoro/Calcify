@@ -88,4 +88,19 @@ describe("ConfigView", () => {
     ConfigView.init();
     expect(document.getElementById("config-rates-list").innerHTML).toContain("no_rates");
   });
+
+  it("uses ApiClient.put for setMainCurrency, not _request", async () => {
+    // Arrange
+    ApiClient.put = jest.fn().mockResolvedValue({ data: [] });
+    ApiClient.get = jest.fn().mockResolvedValue({ data: [] });
+    ApiClient._request = jest.fn();
+    loadGlobal("config");
+
+    // Act
+    await ConfigView.setMainCurrency("EUR");
+
+    // Assert
+    expect(ApiClient._request).not.toHaveBeenCalled();
+    expect(ApiClient.put).toHaveBeenCalledWith("/api/v1/currencies/EUR/set_main");
+  });
 });

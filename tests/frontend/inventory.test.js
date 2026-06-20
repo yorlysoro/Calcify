@@ -107,7 +107,31 @@ describe("InventoryView", () => {
     setupAppState();
     loadGlobal("inventory");
     InventoryView.init();
+    InventoryView.render(".*+?^${}()|[]\\");
     expect(() => { InventoryView.render(".*+?^${}()|[]\\"); }).not.toThrow();
     expect(document.getElementById("inv-table-body").innerHTML).toContain("no_products");
+  });
+
+  it("uses ApiClient.put for product update, not _request", () => {
+    // Arrange
+    ApiClient.put = jest.fn().mockResolvedValue({ data: [] });
+    ApiClient._request = jest.fn();
+    setupAppState();
+    loadGlobal("inventory");
+    InventoryView.init();
+    InventoryView.editingId = "prod-123";
+
+    document.getElementById("prod-name").value = "Updated Product";
+    document.getElementById("prod-cost").value = "150.00";
+    document.getElementById("prod-margin").value = "30";
+    document.getElementById("prod-currency").value = "USD";
+    document.getElementById("prod-stock").value = "10";
+
+    // Act
+    document.getElementById("product-form").dispatchEvent(new Event("submit"));
+
+    // Assert
+    expect(ApiClient._request).not.toHaveBeenCalled();
+    expect(ApiClient.put).toHaveBeenCalled();
   });
 });

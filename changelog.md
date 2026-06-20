@@ -9,7 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-(No changes yet.)
+- **Testing:** `test_no_float_type_hints_in_domain_services` — structural test that inspects domain service type annotations and rejects `float` for monetary parameters.
+- **Testing:** 3 new frontend tests verifying `ApiClient.put()` usage (product update, set main currency) and `ApiClient.post()` (login) — enforcing encapsulation of the HTTP layer.
+- **Testing:** Backend total raised to 142 tests; frontend total raised to 80 tests (222 combined, +3).
+
+### Fixed
+
+- **Domain (Antipatrón #1):** Removed `convert_with_rates()` static method from `domain/services/__init__.py` — used `float` for monetary amounts, rates, and return type. Dead code never called anywhere, but represented a latent critical precision-loss defect if activated. The real `CurrencyConverter.convert()` in `currency_converter.py` already handles conversions with correct `Decimal` math.
+- **Frontend (Antipatrón #2):** `static/js/login.js` — replaced raw `fetch("/login", ...)` call with `ApiClient.post("/login", { pin })`. Login now benefits from centralized 401 redirect, error normalization, and consistent HTTP handling.
+- **Frontend (Antipatrón #3):** `static/js/inventory.js` and `static/js/config.js` — replaced calls to private `ApiClient._request()` with public `ApiClient.put()`, eliminating encapsulation violations and duplicate JSON serialization.
 
 ## [0.9.0] - 2026-06-18
 

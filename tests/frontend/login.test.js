@@ -13,12 +13,14 @@ describe("Login Page", () => {
       </form>
     `;
 
+    ApiClient = { post: jest.fn() };
     global.fetch = jest.fn();
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
     delete global.fetch;
+    ApiClient = null;
   });
 
   function setupLoginForm() {
@@ -34,13 +36,9 @@ describe("Login Page", () => {
     document.getElementById("loginForm").dispatchEvent(event);
   }
 
-  it("sends PIN to /login endpoint on submit", (done) => {
+  it("uses ApiClient.post instead of raw fetch", (done) => {
     // Arrange
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ message: "Authentication successful." }),
-    });
+    ApiClient.post = jest.fn().mockResolvedValue({ message: "Authentication successful." });
     setupLoginForm();
 
     // Act
@@ -48,22 +46,15 @@ describe("Login Page", () => {
 
     // Assert
     setTimeout(() => {
-      expect(global.fetch).toHaveBeenCalledWith("/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin: "test123" }),
-      });
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(ApiClient.post).toHaveBeenCalledWith("/login", { pin: "test123" });
       done();
     }, 50);
   });
 
   it("shows error container on failed login", (done) => {
     // Arrange
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 401,
-      json: async () => ({ error: "Invalid credentials." }),
-    });
+    ApiClient.post = jest.fn().mockRejectedValue(new Error("Invalid credentials."));
     setupLoginForm();
 
     // Act
@@ -82,11 +73,7 @@ describe("Login Page", () => {
   it("submits even with empty PIN (server validation handles it)", (done) => {
     // Arrange
     document.getElementById("pin").value = "";
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 400,
-      json: async () => ({ error: "Missing 'pin' in request payload." }),
-    });
+    ApiClient.post = jest.fn().mockRejectedValue(new Error("Missing 'pin' in request payload."));
     setupLoginForm();
 
     // Act
@@ -94,12 +81,7 @@ describe("Login Page", () => {
 
     // Assert
     setTimeout(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        "/login",
-        expect.objectContaining({
-          body: JSON.stringify({ pin: "" }),
-        }),
-      );
+      expect(ApiClient.post).toHaveBeenCalledWith("/login", { pin: "" });
       done();
     }, 50);
   });
@@ -107,7 +89,7 @@ describe("Login Page", () => {
   // Defensive: network error
   it("handles network error gracefully", (done) => {
     // Arrange
-    global.fetch = jest.fn().mockRejectedValue(new Error("Network error"));
+    ApiClient.post = jest.fn().mockRejectedValue(new Error("Network error"));
     setupLoginForm();
 
     // Act
@@ -125,11 +107,7 @@ describe("Login Page", () => {
   // Defensive: clears PIN after submit
   it("clears PIN input after submit (finally block)", (done) => {
     // Arrange
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 401,
-      json: async () => ({ error: "Invalid credentials." }),
-    });
+    ApiClient.post = jest.fn().mockRejectedValue(new Error("Invalid credentials."));
     setupLoginForm();
 
     // Act

@@ -97,25 +97,4 @@ class CurrencyConverter:
         # The string "0.01" serves as the quantization pattern for two decimal places.
         return raw_result.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    @staticmethod
-    def convert_with_rates(
-        amount: float,
-        source_rate: float,
-        target_rate: float,
-    ) -> float:
-        """
-        Converts an amount using source and target exchange rates relative to the base currency.
 
-        Formula: (amount / source_rate) * target_rate
-
-        Args:
-            amount (float): The monetary value to convert.
-            source_rate (float): Exchange rate of the source currency (1.0 if it is the base).
-            target_rate (float): Exchange rate of the target currency (1.0 if it is the base).
-
-        Returns:
-            float: The converted amount rounded to 4 decimal places.
-        """
-        if source_rate == 0.0 or target_rate == 0.0:
-            raise InvalidExchangeRateError("Exchange rate cannot be zero.")
-        return round((amount / source_rate) * target_rate, 4)

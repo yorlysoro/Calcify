@@ -32,6 +32,33 @@ def test_inverse_rate_multiplication_identity() -> None:
     assert rounded == Decimal("100.0000")
 
 
+def test_no_float_type_hints_in_domain_services() -> None:
+    """Structural test: domain services must not use float for monetary params."""
+    import inspect
+    from domain.services import CurrencyConverter
+
+    with_invalid: list[str] = []
+    for name, method in inspect.getmembers(CurrencyConverter, predicate=inspect.isfunction):
+        sig = inspect.signature(method)
+        for pname, param in sig.parameters.items():
+            if pname == "self":
+                continue
+            hint_raw = param.annotation
+            if isinstance(hint_raw, str) and hint_raw == "float":
+                with_invalid.append(f"{name}.{pname}")
+            elif hint_raw is float:
+                with_invalid.append(f"{name}.{pname}")
+        ret = sig.return_annotation
+        if isinstance(ret, str) and ret == "float":
+            with_invalid.append(f"{name}.return")
+        elif ret is float:
+            with_invalid.append(f"{name}.return")
+
+    assert not with_invalid, (
+        f"Domain services use float instead of Decimal: {with_invalid}"
+    )
+
+
 def test_main_to_main_identity() -> None:
     """
     Main → Main: both inverses are 1, amount stays unchanged.
