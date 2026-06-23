@@ -30,7 +30,7 @@
 import pytest
 from uuid import uuid4, UUID
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Assuming your imports are structured this way
 from domain.models import Product, Currency, ExchangeRate
@@ -59,7 +59,7 @@ def rate_usd_ves() -> ExchangeRate:
         base_currency_code="USD",
         target_currency_code="VES",
         rate=Decimal("36.50"),
-        date=datetime.now(),
+        date=datetime.now(timezone.utc),
     )
 
 

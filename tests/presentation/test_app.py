@@ -121,6 +121,24 @@ def test_non_http_exception_handler(client):
     assert data["error"] == "Internal Server Error"
 
 
+def test_index_renders_with_spanish_locale(client) -> None:
+    """Render index.html with Spanish locale to catch i18n rendering errors.
+
+    Validates that the full Jinja2 template pipeline (extends, blocks, gettext)
+    completes without ValueError/KeyError when the Spanish locale is active.
+    This guards against the 'unsupported format character' bug caused by
+    literal '%' in translatable strings.
+    """
+    with client.session_transaction() as sess:
+        sess["authenticated"] = True
+        sess["locale"] = "es"
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.data
+
+
 def test_create_app_production_path(monkeypatch):
     """create_app() without config_name uses production path successfully."""
     test_engine = create_engine(

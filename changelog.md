@@ -11,13 +11,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Testing:** `test_no_float_type_hints_in_domain_services` — structural test that inspects domain service type annotations and rejects `float` for monetary parameters.
 - **Testing:** 3 new frontend tests verifying `ApiClient.put()` usage (product update, set main currency) and `ApiClient.post()` (login) — enforcing encapsulation of the HTTP layer.
-- **Testing:** Backend total raised to 142 tests; frontend total raised to 80 tests (222 combined, +3).
+- **Testing:** Backend total raised to 159 tests; frontend total raised to 97 tests (256 combined, +3).
+- **License:** BSD 3-Clause License header added to 50 source files across all layers — 14 `.py` files (use cases, presentation web routes, auto_migrate, etc.), 24 `.js` files (all `static/js/` views, `tests/frontend/`, `tailwind.config.js`), 3 `.html` templates, and 8 `.css` files (all view-specific CSS + `input.css`). All 84 source files now carry the license header.
+
+### Changed
+
+- **Docs:** `README.md` — complete rewrite in English with full project documentation (architecture, installation, usage guide, conversion logic, tests). Replaces the previous stub.
+
+### Removed
+
+- **Infrastructure:** Platform launcher scripts `iniciar_debian.sh` (Linux) and `instalar_y_correr.bat` (Windows) — setup instructions are now documented in README.md.
+- **Docs:** `estructura_calcify.txt` — Spanish project state report removed; content superseded by the new English README.md.
 
 ### Fixed
 
 - **Domain (Antipatrón #1):** Removed `convert_with_rates()` static method from `domain/services/__init__.py` — used `float` for monetary amounts, rates, and return type. Dead code never called anywhere, but represented a latent critical precision-loss defect if activated. The real `CurrencyConverter.convert()` in `currency_converter.py` already handles conversions with correct `Decimal` math.
 - **Frontend (Antipatrón #2):** `static/js/login.js` — replaced raw `fetch("/login", ...)` call with `ApiClient.post("/login", { pin })`. Login now benefits from centralized 401 redirect, error normalization, and consistent HTTP handling.
 - **Frontend (Antipatrón #3):** `static/js/inventory.js` and `static/js/config.js` — replaced calls to private `ApiClient._request()` with public `ApiClient.put()`, eliminating encapsulation violations and duplicate JSON serialization.
+- **Infrastructure:** Created `infrastructure/__init__.py` to fix missing package marker — all packages now have `__init__.py` files.
+- **Frontend:** Refactored `static/js/login.js` to `var LoginView = { init: function, handleLogin: function }` pattern with `function` keyword (not arrow functions) — conforming to project convention of plain JS global vars referenced via `onclick` in HTML.
+- **Frontend:** `static/js/login.js` listeners now registered inside `init()` — fixing missing DOM event bindings on page load.
+- **Frontend tests:** `tests/frontend/login.test.js` — replaced direct `eval(code)` with `(0, eval)(code)` pattern for proper global scope injection in Jest.
+- **Frontend:** Removed redundant `__locale` guard from `static/js/utils.js` — locale is already defined in `i18n.js`; double declaration masked the real source.
+- **API:** Replaced hardcoded `"/login"` redirect in `presentation/api/auth.py` with `url_for("web.login")` — fixing broken redirect when blueprint URL prefix changes.
+- **API:** Added missing `Response` type hint imports in `presentation/web/routes.py` (`index()`, `login()`) and fixed return type hints in `presentation/api/routes.py` (`register_sale()`, `export_backup()`).
+- **Infrastructure:** Added `_map_to_domain()` methods to `SqlAlchemyCurrencyRepository`, `SqlAlchemyProductRepository`, and `SqlAlchemyCurrencyRateRepository` — unifying ORM-to-domain mapping and removing inline mapping duplication.
+- **Infrastructure:** Unified `Product` entity fallback defaults in `SqlAlchemyProductRepository` (`get_by_id` and `get_all` now both apply `category or "Uncategorized"` and `stock_quantity or 0`).
+- **Domain:** Added timezone awareness validation in `ExchangeRate.__post_init__` (validates `date.tzinfo`) and `CurrencyRate.__post_init__` (validates `rate` as `Decimal` and `created_at` as TZ-aware) — preventing silent data corruption from naive datetimes.
+- **Testing:** Removed all ORM model imports (`CurrencyModel`, `TransactionModel`, etc.) from `tests/use_cases/test_currency_conversion.py`, `tests/use_cases/test_sales.py`, `tests/presentation/test_duplication_prevention.py`, and `tests/presentation/test_ui_refresh_integration.py` — enforcing the Clean Architecture rule that no code outside `infrastructure/` imports ORM models directly.
+- **Testing:** Consolidated `seed_admin_password` fixture into `tests/conftest.py` — removed 3 duplicate definitions across presentation test files.
+- **Testing:** Updated `test_currency_converter.py` (5 tests) and `test_product.py` (2 tests) from `datetime.now()` to `datetime.now(timezone.utc)` — complying with new domain timezone validation.
 
 ## [0.9.0] - 2026-06-18
 

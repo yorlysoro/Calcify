@@ -45,39 +45,25 @@ from infrastructure.repositories.interfaces import (
 
 
 class SqlAlchemyCurrencyRepository(ICurrencyRepository):
-    """
-    SQLAlchemy implementation of the currency repository interface.
-    Handles the boundary mapping between ORM models and pure Domain models.
-    """
 
     def __init__(self, session: Session) -> None:
-        """
-        Injects the database session dependency to perform transactions.
-        
-        Args:
-            session (Session): The active SQLAlchemy database session.
-        """
         self._session: Session = session
 
-    def get_by_code(self, code: str) -> Optional[Currency]:
-        """
-        Queries the database for a currency and maps it to a domain entity.
-        Time Complexity: O(1) assuming the 'code' primary key is indexed.
-        """
-        model: Optional[CurrencyModel] = self._session.query(CurrencyModel).filter_by(code=code).first()
-        if not model:
-            return None
-        
-        # Domain Mapping: Returning pure entities without DB session attachment
+    def _map_to_domain(self, model: CurrencyModel) -> Currency:
         return Currency(
             code=model.code,
             name=model.name,
             symbol=model.symbol,
-            is_main=model.is_main
+            is_main=model.is_main,
         )
 
+    def get_by_code(self, code: str) -> Optional[Currency]:
+        model: Optional[CurrencyModel] = self._session.query(CurrencyModel).filter_by(code=code).first()
+        if not model:
+            return None
+        return self._map_to_domain(model)
+
     def save(self, currency: Currency) -> None:
-        """Maps a domain Currency entity to an ORM model and persists it."""
         model: CurrencyModel = CurrencyModel(
             code=currency.code,
             name=currency.name,
@@ -87,17 +73,8 @@ class SqlAlchemyCurrencyRepository(ICurrencyRepository):
         self._session.merge(model)
 
     def get_all(self) -> List[Currency]:
-        """Retrieves all currencies mapped to domain entities."""
         models: List[CurrencyModel] = self._session.query(CurrencyModel).all()
-        return [
-            Currency(
-                code=m.code,
-                name=m.name,
-                symbol=m.symbol,
-                is_main=m.is_main
-            )
-            for m in models
-        ]
+        return [self._map_to_domain(m) for m in models]
 
     def set_main(self, code: str) -> None:
         """Sets a currency as main/base, unsetting all others."""
@@ -110,42 +87,31 @@ class SqlAlchemyCurrencyRepository(ICurrencyRepository):
 
 
 class SqlAlchemyProductRepository(IProductRepository):
-    """
-    SQLAlchemy implementation of the product repository interface.
-    Ensures domain isolation by handling all mapping internally.
-    """
 
     def __init__(self, session: Session) -> None:
         self._session: Session = session
 
-    def get_by_id(self, product_id: UUID) -> Optional[Product]:
-        """
-        Queries the database for a product by UUID and maps it to the domain.
-        """
-        model: Optional[ProductModel] = self._session.query(ProductModel).filter_by(id=product_id).first()
-        if not model:
-            return None
-
+    def _map_to_domain(self, model: ProductModel) -> Product:
         return Product(
             id=model.id,
             name=model.name,
             cost_price=model.cost_price,
             cost_currency_code=model.cost_currency_code,
             margin_percentage=model.margin_percentage,
-            category=model.category,
-            stock_quantity=model.stock_quantity,
+            category=model.category or "Uncategorized",
+            stock_quantity=model.stock_quantity or 0,
         )
 
+    def get_by_id(self, product_id: UUID) -> Optional[Product]:
+        model: Optional[ProductModel] = self._session.query(ProductModel).filter_by(id=product_id).first()
+        if not model:
+            return None
+        return self._map_to_domain(model)
+
     def save(self, product: Product) -> None:
-        """
-        Maps a pure domain entity to an ORM model and persists it to the database.
-        Note: The caller is responsible for committing the session (Unit of Work pattern).
-        """
-        # Determine if we are updating an existing entity or inserting a new one
         existing_model: Optional[ProductModel] = self._session.query(ProductModel).filter_by(id=product.id).first()
 
         if existing_model:
-            # Update mapped attributes directly to trigger SQLAlchemy state changes
             existing_model.name = product.name
             existing_model.cost_price = product.cost_price
             existing_model.cost_currency_code = product.cost_currency_code
@@ -153,7 +119,6 @@ class SqlAlchemyProductRepository(IProductRepository):
             existing_model.category = product.category
             existing_model.stock_quantity = product.stock_quantity
         else:
-            # Create a new ORM instance mapped from the domain entity
             new_model = ProductModel(
                 id=product.id,
                 name=product.name,
@@ -164,20 +129,11 @@ class SqlAlchemyProductRepository(IProductRepository):
                 stock_quantity=product.stock_quantity,
             )
             self._session.add(new_model)
-            
-        # The flush/commit operation is handled globally by a UnitOfWork, not here.
-    
+
     def get_all(self) -> List[Product]:
         models = self._session.query(ProductModel).all()
-        return [
-            Product(
-                id=m.id, name=m.name, cost_price=m.cost_price,
-                cost_currency_code=m.cost_currency_code, margin_percentage=m.margin_percentage,
-                category=m.category or "Uncategorized",
-                stock_quantity=m.stock_quantity or 0,
-            ) for m in models
-        ]
-    
+        return [self._map_to_domain(m) for m in models]
+
     def delete(self, product_id: UUID) -> bool:
         """
         Executes a hard delete on the ORM model. Time Complexity: O(1) via PK index.
@@ -192,16 +148,23 @@ class SqlAlchemyProductRepository(IProductRepository):
         return True
 
 class SqlAlchemyCurrencyRateRepository(ICurrencyRateRepository):
-    """
-    SQLAlchemy implementation of the currency rate repository interface.
-    Handles the boundary mapping between CurrencyRateModel and domain CurrencyRate.
-    """
 
     def __init__(self, session: Session) -> None:
         self._session: Session = session
 
+    def _map_to_domain(self, model: CurrencyRateModel) -> CurrencyRate:
+        dt = model.created_at
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return CurrencyRate(
+            id=model.id,
+            currency_code=model.currency_code,
+            rate=model.rate,
+            inverse_rate=model.inverse_rate,
+            created_at=dt,
+        )
+
     def save(self, rate: CurrencyRate) -> None:
-        """Maps a domain CurrencyRate to an ORM model and persists it via merge."""
         inverse: Decimal = Decimal("1") / rate.rate
         model: CurrencyRateModel = CurrencyRateModel(
             id=rate.id,
@@ -213,7 +176,6 @@ class SqlAlchemyCurrencyRateRepository(ICurrencyRateRepository):
         self._session.merge(model)
 
     def get_latest_by_code(self, code: str) -> Optional[CurrencyRate]:
-        """Returns the most recent CurrencyRate for the given code, or None."""
         model: Optional[CurrencyRateModel] = (
             self._session.query(CurrencyRateModel)
             .filter_by(currency_code=code)
@@ -222,16 +184,9 @@ class SqlAlchemyCurrencyRateRepository(ICurrencyRateRepository):
         )
         if not model:
             return None
-        return CurrencyRate(
-            id=model.id,
-            currency_code=model.currency_code,
-            rate=model.rate,
-            inverse_rate=model.inverse_rate,
-            created_at=model.created_at,
-        )
+        return self._map_to_domain(model)
 
     def get_all_latest(self) -> List[CurrencyRate]:
-        """Returns the most recent CurrencyRate for each currency code."""
         subq = (
             self._session.query(
                 CurrencyRateModel.currency_code,
@@ -249,16 +204,7 @@ class SqlAlchemyCurrencyRateRepository(ICurrencyRateRepository):
             )
             .all()
         )
-        return [
-            CurrencyRate(
-                id=m.id,
-                currency_code=m.currency_code,
-                rate=m.rate,
-                inverse_rate=m.inverse_rate,
-                created_at=m.created_at,
-            )
-            for m in models
-        ]
+        return [self._map_to_domain(m) for m in models]
 
     def delete(self, rate_id: UUID) -> bool:
         """Deletes a CurrencyRate by ID. Returns True if found and removed."""

@@ -61,7 +61,7 @@ def login_required(f: Callable[..., Any]) -> Callable[..., Any]:
 
             # Browser redirection (Assuming a 'web.login_page' route will exist)
             # Fallback to a plain 401 if you don't have a web blueprint yet
-            return redirect("/login")
+            return redirect(url_for("web.login"))
 
         return f(*args, **kwargs)
 

@@ -1,3 +1,32 @@
+// BSD 3-Clause License
+//
+// Copyright (c) 2026, yorlysoro
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its
+//    contributors may be used to endorse or promote products derived from
+//    this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 const fs = require("fs");
 const path = require("path");
 
@@ -117,5 +146,22 @@ describe("ReportView", () => {
     ReportView.dateInput.value = "2026-06-14";
     await ReportView.fetchAndRender();
     expect(document.getElementById("report-table-body").innerHTML).toContain("failed_load_transactions");
+  });
+
+  it("refreshes transactions after fetchAndRender", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true, status: 200,
+      headers: new Map([["content-type", "application/json"]]),
+      json: async () => ({ data: [{ id: "tx1", product_id: "p1", transaction_type: "OUT", quantity: 1, unit_price: "100.00", currency_code: "USD", created_at: "2026-06-14T10:00:00Z" }] }),
+    });
+    loadGlobal("reports");
+    CalculatorView = { formatMoney: formatMoney };
+    ReportView.tbody = document.getElementById("report-table-body");
+    ReportView.dateInput = document.getElementById("report-date-filter");
+    ReportView.dateInput.value = "2026-06-14";
+    expect(ReportView.transactions.length).toBe(0);
+    await ReportView.fetchAndRender();
+    expect(ReportView.transactions.length).toBe(1);
+    expect(ReportView.transactions[0].id).toBe("tx1");
   });
 });

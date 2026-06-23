@@ -14,7 +14,7 @@ python app.py              # binds 0.0.0.0:5000
 Password reset: `python reset_password.py`
 
 Frontend build: `npm run build:css` (Tailwind CSS local).
-Frontend tests: `npm test` (Jest + jsdom, 78 tests).
+Frontend tests: `npm test` (Jest + jsdom, 97 tests).
 
 Platform launchers: `iniciar_debian.sh` (Linux), `instalar_y_correr.bat` (Windows).
 

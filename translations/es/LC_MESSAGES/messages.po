@@ -627,8 +627,8 @@ msgid "Add"
 msgstr "Agregar"
 
 #: presentation/templates/index.html:132
-msgid "Margin (%)"
-msgstr "Margen (%)"
+msgid "Margin (%%)"
+msgstr "Margen (%%)"
 
 #: presentation/templates/index.html:136
 msgid "Stock Quantity"

@@ -182,6 +182,20 @@ def create_product() -> Tuple[Response, int]:
         )
 
         repo.save(new_product)
+
+        if new_product.stock_quantity > 0:
+            tx_repo = SqlAlchemyTransactionRepository(session=g.db_session)
+            tx = Transaction(
+                id=uuid4(),
+                product_id=new_product.id,
+                transaction_type="IN",
+                quantity=new_product.stock_quantity,
+                unit_price=new_product.cost_price,
+                currency_code=new_product.cost_currency_code,
+                created_at=datetime.now(timezone.utc),
+            )
+            tx_repo.save(tx)
+
         g.db_session.commit()
 
         return (
@@ -626,7 +640,7 @@ def delete_currency_rate(rate_id: str) -> Tuple[Response, int]:
 
 @api_bp.route("/backup/export", methods=["GET"])
 @login_required
-def export_backup() -> Response:
+def export_backup() -> Union[Response, Tuple[Response, int]]:
     """
     Triggers the generation of a full system backup.
     Protected endpoint: Requires active session.
@@ -663,7 +677,7 @@ def export_backup() -> Response:
 
 @api_bp.route("/sales", methods=["POST"])
 @login_required
-def register_sale():
+def register_sale() -> Tuple[Response, int]:
     """Register a sale: validate stock, create OUT transaction, reduce stock."""
     payload = request.get_json()
     if not payload:

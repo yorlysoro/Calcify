@@ -33,39 +33,13 @@ from uuid import uuid4
 from datetime import datetime, timedelta, timezone
 from flask import g
 from flask.testing import FlaskClient
-from werkzeug.security import generate_password_hash
-
-# Infrastructure Imports (To interact with the in-memory DB during tests)
 from domain.models import Product, Transaction, CurrencyRate
 from infrastructure.repositories.sqlalchemy_repos import (
-    SqlAlchemyConfigRepository,
     SqlAlchemyProductRepository,
     SqlAlchemyCurrencyRateRepository,
     SqlAlchemyTransactionRepository,
 )
 from infrastructure.database.models import CurrencyModel, CurrencyRateModel, ProductModel
-
-
-@pytest.fixture
-def seed_admin_password(client: FlaskClient) -> None:
-    """
-    Test Fixture: Seeds the in-memory database with a valid admin password hash
-    before the test runs. Utilizes Flask's request context to trigger the
-    'before_request' middleware and acquire a valid g.db_session.
-    """
-    with client.application.test_request_context("/"):
-        client.application.preprocess_request()  # Triggers @app.before_request -> populates g.db_session
-
-        repo = SqlAlchemyConfigRepository(g.db_session)
-        # Using "admin123" as the test PIN
-        repo.set_value("admin_password_hash", generate_password_hash("admin123"))
-
-        # Optional: Seed a generic currency to avoid Foreign Key violations
-        # when testing Product Creation later.
-        usd = CurrencyModel(code="USD", name="US Dollar", symbol="$", is_main=True)
-        g.db_session.merge(usd)
-
-        g.db_session.commit()
 
 
 def test_unauthenticated_access_is_blocked(client: FlaskClient) -> None:
@@ -1065,6 +1039,117 @@ def test_create_product_invalid_decimal(
     })
     assert response.status_code == 400
     assert "Financial values" in response.get_json()["error"]
+
+
+def test_create_product_with_stock_creates_in_transaction(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """POST /api/v1/products with stock>0 creates an IN transaction for the cost."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    product_id: str = str(uuid4())
+    payload = {
+        "id": product_id,
+        "name": "Stocked Product",
+        "cost_price": "500.00",
+        "cost_currency_code": "USD",
+        "margin_percentage": "30.00",
+        "stock_quantity": 10,
+    }
+    create_resp = client.post("/api/v1/products", json=payload)
+    assert create_resp.status_code == 201
+
+    tx_resp = client.get("/api/v1/transactions")
+    assert tx_resp.status_code == 200
+    txs = tx_resp.get_json()["data"]
+    assert len(txs) == 1
+
+    tx = txs[0]
+    assert tx["transaction_type"] == "IN"
+    assert tx["quantity"] == 10
+    assert tx["unit_price"] == "500.00"
+    assert tx["product_id"] == product_id
+
+
+def test_create_product_zero_stock_no_in_transaction(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """POST /api/v1/products with stock=0 does NOT create an IN transaction."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    payload = {
+        "id": str(uuid4()),
+        "name": "Zero Stock Product",
+        "cost_price": "100.00",
+        "cost_currency_code": "USD",
+        "margin_percentage": "20.00",
+        "stock_quantity": 0,
+    }
+    response = client.post("/api/v1/products", json=payload)
+    assert response.status_code == 201
+
+    tx_resp = client.get("/api/v1/transactions")
+    assert tx_resp.status_code == 200
+    assert tx_resp.get_json()["data"] == []
+
+
+def test_create_product_default_stock_no_in_transaction(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """POST /api/v1/products without stock_quantity defaults to 0, no IN."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    payload = {
+        "id": str(uuid4()),
+        "name": "No Stock Field",
+        "cost_price": "50.00",
+        "cost_currency_code": "USD",
+        "margin_percentage": "15.00",
+    }
+    response = client.post("/api/v1/products", json=payload)
+    assert response.status_code == 201
+
+    tx_resp = client.get("/api/v1/transactions")
+    assert tx_resp.status_code == 200
+    assert tx_resp.get_json()["data"] == []
+
+
+def test_update_product_stock_does_not_create_duplicate_in(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """PUT /api/v1/products/<id> changing stock does NOT create extra IN."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    product_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyProductRepository(g.db_session)
+        repo.save(Product(
+            id=product_id, name="Update Stock",
+            cost_price=Decimal("100.00"), cost_currency_code="USD",
+            margin_percentage=Decimal("20.00"), stock_quantity=5,
+        ))
+        g.db_session.commit()
+
+    # At this point there should be 0 IN (product was saved via repo, not API)
+    resp_before = client.get("/api/v1/transactions")
+    assert resp_before.status_code == 200
+    assert resp_before.get_json()["data"] == []
+
+    # Now update stock via PUT
+    put_resp = client.put(f"/api/v1/products/{product_id}", json={
+        "stock_quantity": 15,
+    })
+    assert put_resp.status_code == 200
+
+    # After update, still 0 IN (no new IN transaction)
+    resp_after = client.get("/api/v1/transactions")
+    assert resp_after.status_code == 200
+    assert resp_after.get_json()["data"] == []
 
 
 def test_create_currency_missing_payload(

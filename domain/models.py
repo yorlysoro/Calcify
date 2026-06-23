@@ -83,15 +83,15 @@ class ExchangeRate:
     date: datetime
 
     def __post_init__(self) -> None:
-        """
-        Validates data integrity post-instantiation.
-        Ensures strict compliance with the financial precision rule.
-        """
         if not isinstance(self.rate, Decimal):
-            # Enforcing strict typing at runtime just in case someone ignores the Type Hints
             raise TypeError(
                 f"ExchangeRate.rate MUST be of type decimal.Decimal, "
                 f"got {type(self.rate).__name__} instead."
+            )
+        if self.date.tzinfo is None:
+            raise ValueError(
+                "ExchangeRate.date must be timezone-aware. "
+                "Use datetime.now(timezone.utc) or similar."
             )
 
 
@@ -199,6 +199,18 @@ class CurrencyRate:
     rate: Decimal
     created_at: datetime
     inverse_rate: Decimal = Decimal("0.0")
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.rate, Decimal):
+            raise TypeError(
+                f"CurrencyRate.rate MUST be of type decimal.Decimal, "
+                f"got {type(self.rate).__name__} instead."
+            )
+        if self.created_at.tzinfo is None:
+            raise ValueError(
+                "CurrencyRate.created_at must be timezone-aware. "
+                "Use datetime.now(timezone.utc) or similar."
+            )
 
 
 @dataclass(slots=True)

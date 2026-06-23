@@ -1,3 +1,32 @@
+# BSD 3-Clause License
+#
+# Copyright (c) 2026, yorlysoro
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import pytest
 from decimal import Decimal
 from uuid import uuid4
@@ -11,14 +40,15 @@ from infrastructure.repositories.sqlalchemy_repos import (
     SqlAlchemyCurrencyRepository,
     SqlAlchemyCurrencyRateRepository,
 )
-from infrastructure.database.models import CurrencyModel
+
 
 
 def seed_currencies_and_rates(db_session: Session) -> None:
     """Helper to seed Bs (main), USD (rate=500), EUR (rate=600)."""
-    db_session.merge(CurrencyModel(code="BS", name="Bolivar", symbol="Bs", is_main=True))
-    db_session.merge(CurrencyModel(code="USD", name="US Dollar", symbol="$", is_main=False))
-    db_session.merge(CurrencyModel(code="EUR", name="Euro", symbol="\u20ac", is_main=False))
+    currency_repo = SqlAlchemyCurrencyRepository(db_session)
+    currency_repo.save(Currency(code="BS", name="Bolivar", symbol="Bs", is_main=True))
+    currency_repo.save(Currency(code="USD", name="US Dollar", symbol="$", is_main=False))
+    currency_repo.save(Currency(code="EUR", name="Euro", symbol="\u20ac", is_main=False))
     db_session.commit()
 
     rate_repo = SqlAlchemyCurrencyRateRepository(db_session)
@@ -109,10 +139,10 @@ def test_convert_cross_currency_eur_to_usd(db_session: Session) -> None:
 
 def test_convert_main_to_main(db_session: Session) -> None:
     """Main → Main: amount unchanged."""
-    db_session.merge(CurrencyModel(code="GBP", name="Pound", symbol="\u00a3", is_main=True))
+    currency_repo = SqlAlchemyCurrencyRepository(db_session)
+    currency_repo.save(Currency(code="GBP", name="Pound", symbol="\u00a3", is_main=True))
     db_session.flush()
 
-    currency_repo = SqlAlchemyCurrencyRepository(db_session)
     rate_repo = SqlAlchemyCurrencyRateRepository(db_session)
     use_case = CurrencyConversionUseCase(
         currency_repo=currency_repo,
@@ -131,10 +161,10 @@ def test_convert_main_to_main(db_session: Session) -> None:
 def test_raises_error_when_no_main_currency(db_session: Session) -> None:
     """No currency marked as main should raise ValueError."""
     db_session.execute(text("DELETE FROM currencies"))
-    db_session.merge(CurrencyModel(code="JPY", name="Yen", symbol="\u00a5", is_main=False))
+    currency_repo = SqlAlchemyCurrencyRepository(db_session)
+    currency_repo.save(Currency(code="JPY", name="Yen", symbol="\u00a5", is_main=False))
     db_session.commit()
 
-    currency_repo = SqlAlchemyCurrencyRepository(db_session)
     rate_repo = SqlAlchemyCurrencyRateRepository(db_session)
     use_case = CurrencyConversionUseCase(
         currency_repo=currency_repo,
@@ -148,10 +178,10 @@ def test_raises_error_when_no_main_currency(db_session: Session) -> None:
 def test_raises_error_when_source_currency_not_found(db_session: Session) -> None:
     """Non-existent source currency should raise ValueError."""
     db_session.execute(text("DELETE FROM currencies"))
-    db_session.merge(CurrencyModel(code="CHF", name="Franc", symbol="Fr", is_main=True))
+    currency_repo = SqlAlchemyCurrencyRepository(db_session)
+    currency_repo.save(Currency(code="CHF", name="Franc", symbol="Fr", is_main=True))
     db_session.commit()
 
-    currency_repo = SqlAlchemyCurrencyRepository(db_session)
     rate_repo = SqlAlchemyCurrencyRateRepository(db_session)
     use_case = CurrencyConversionUseCase(
         currency_repo=currency_repo,
@@ -165,10 +195,10 @@ def test_raises_error_when_source_currency_not_found(db_session: Session) -> Non
 def test_raises_error_when_target_currency_not_found(db_session: Session) -> None:
     """Non-existent target currency should raise ValueError."""
     db_session.execute(text("DELETE FROM currencies"))
-    db_session.merge(CurrencyModel(code="CAD", name="Dollar", symbol="$", is_main=True))
+    currency_repo = SqlAlchemyCurrencyRepository(db_session)
+    currency_repo.save(Currency(code="CAD", name="Dollar", symbol="$", is_main=True))
     db_session.commit()
 
-    currency_repo = SqlAlchemyCurrencyRepository(db_session)
     rate_repo = SqlAlchemyCurrencyRateRepository(db_session)
     use_case = CurrencyConversionUseCase(
         currency_repo=currency_repo,
@@ -182,11 +212,11 @@ def test_raises_error_when_target_currency_not_found(db_session: Session) -> Non
 def test_raises_error_when_no_rate_for_source(db_session: Session) -> None:
     """Source currency without a rate (and not main) should raise ValueError."""
     db_session.execute(text("DELETE FROM currencies"))
-    db_session.merge(CurrencyModel(code="MXN", name="Mexican Peso", symbol="$", is_main=False))
-    db_session.merge(CurrencyModel(code="ARS", name="Argentine Peso", symbol="$", is_main=True))
+    currency_repo = SqlAlchemyCurrencyRepository(db_session)
+    currency_repo.save(Currency(code="MXN", name="Mexican Peso", symbol="$", is_main=False))
+    currency_repo.save(Currency(code="ARS", name="Argentine Peso", symbol="$", is_main=True))
     db_session.commit()
 
-    currency_repo = SqlAlchemyCurrencyRepository(db_session)
     rate_repo = SqlAlchemyCurrencyRateRepository(db_session)
     use_case = CurrencyConversionUseCase(
         currency_repo=currency_repo,
@@ -200,11 +230,11 @@ def test_raises_error_when_no_rate_for_source(db_session: Session) -> None:
 def test_raises_error_when_no_rate_for_target(db_session: Session) -> None:
     """Target currency without a rate (and not main) should raise ValueError."""
     db_session.execute(text("DELETE FROM currencies"))
-    db_session.merge(CurrencyModel(code="COP", name="Colombian Peso", symbol="$", is_main=True))
-    db_session.merge(CurrencyModel(code="CLP", name="Chilean Peso", symbol="$", is_main=False))
+    currency_repo = SqlAlchemyCurrencyRepository(db_session)
+    currency_repo.save(Currency(code="COP", name="Colombian Peso", symbol="$", is_main=True))
+    currency_repo.save(Currency(code="CLP", name="Chilean Peso", symbol="$", is_main=False))
     db_session.commit()
 
-    currency_repo = SqlAlchemyCurrencyRepository(db_session)
     rate_repo = SqlAlchemyCurrencyRateRepository(db_session)
     use_case = CurrencyConversionUseCase(
         currency_repo=currency_repo,

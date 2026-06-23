@@ -1,3 +1,32 @@
+// BSD 3-Clause License
+//
+// Copyright (c) 2026, yorlysoro
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this
+//    list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its
+//    contributors may be used to endorse or promote products derived from
+//    this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 const fs = require("fs");
 const path = require("path");
 
@@ -112,6 +141,74 @@ describe("InventoryView", () => {
     expect(document.getElementById("inv-table-body").innerHTML).toContain("no_products");
   });
 
+  it("does not duplicate POST when initModal is called multiple times", () => {
+    ApiClient.post = jest.fn().mockResolvedValue({});
+    ApiClient.get = jest.fn().mockResolvedValue({ data: [] });
+    crypto.randomUUID = jest.fn().mockReturnValue("mock-uuid-123");
+    setupAppState();
+    loadGlobal("inventory");
+    InventoryView.init();
+
+    InventoryView.initModal();
+
+    document.getElementById("prod-name").value = "Dupe Test";
+    document.getElementById("prod-cost").value = "100";
+    document.getElementById("prod-margin").value = "20";
+    document.getElementById("prod-stock").value = "5";
+
+    document.getElementById("product-form").dispatchEvent(new Event("submit"));
+
+    expect(ApiClient.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("repopulates currency select when initModal is called after currency change", () => {
+    setupAppState();
+    loadGlobal("inventory");
+    InventoryView.init();
+
+    var select = document.getElementById("prod-currency");
+    expect(select.options.length).toBe(1);
+
+    App.state.currencies.push({ code: "EUR", name: "Euro", symbol: "€", is_main: false });
+    InventoryView.initModal();
+
+    expect(select.options.length).toBe(2);
+    expect(select.innerHTML).toContain("EUR");
+  });
+
+  it("calls SalesView.populateSelects after product creation", async () => {
+    SalesView = { populateSelects: jest.fn() };
+    ApiClient.post = jest.fn().mockResolvedValue({});
+    ApiClient.get = jest.fn().mockResolvedValue({ data: [] });
+    crypto.randomUUID = jest.fn().mockReturnValue("mock-uuid-456");
+    setupAppState();
+    loadGlobal("inventory");
+    InventoryView.init();
+
+    document.getElementById("prod-name").value = "New Product";
+    document.getElementById("prod-cost").value = "50";
+    document.getElementById("prod-margin").value = "30";
+    document.getElementById("prod-stock").value = "10";
+
+    document.getElementById("product-form").dispatchEvent(new Event("submit"));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(SalesView.populateSelects).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls SalesView.populateSelects after product delete", async () => {
+    SalesView = { populateSelects: jest.fn() };
+    global.confirm = jest.fn().mockReturnValue(true);
+    ApiClient.delete = jest.fn().mockResolvedValue({});
+    setupAppState();
+    loadGlobal("inventory");
+    InventoryView.init();
+
+    await InventoryView.deleteProduct("1");
+
+    expect(SalesView.populateSelects).toHaveBeenCalledTimes(1);
+  });
+
   it("uses ApiClient.put for product update, not _request", () => {
     // Arrange
     ApiClient.put = jest.fn().mockResolvedValue({ data: [] });
@@ -133,5 +230,80 @@ describe("InventoryView", () => {
     // Assert
     expect(ApiClient._request).not.toHaveBeenCalled();
     expect(ApiClient.put).toHaveBeenCalled();
+  });
+
+  it("calls SalesView.populateSelects after product update", async () => {
+    SalesView = { populateSelects: jest.fn() };
+    ApiClient.put = jest.fn().mockResolvedValue({ data: [] });
+    ApiClient.get = jest.fn().mockResolvedValue({ data: [] });
+    setupAppState();
+    loadGlobal("inventory");
+    InventoryView.init();
+    InventoryView.editingId = "prod-123";
+
+    document.getElementById("prod-name").value = "Updated Product";
+    document.getElementById("prod-cost").value = "200.00";
+    document.getElementById("prod-margin").value = "25";
+    document.getElementById("prod-currency").value = "USD";
+    document.getElementById("prod-stock").value = "10";
+
+    document.getElementById("product-form").dispatchEvent(new Event("submit"));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(SalesView.populateSelects).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls ReportView.fetchAndRender after product creation", async () => {
+    ReportView = { fetchAndRender: jest.fn() };
+    ApiClient.post = jest.fn().mockResolvedValue({});
+    ApiClient.get = jest.fn().mockResolvedValue({ data: [] });
+    crypto.randomUUID = jest.fn().mockReturnValue("mock-uuid-789");
+    setupAppState();
+    loadGlobal("inventory");
+    InventoryView.init();
+
+    document.getElementById("prod-name").value = "Report Test";
+    document.getElementById("prod-cost").value = "75";
+    document.getElementById("prod-margin").value = "20";
+    document.getElementById("prod-stock").value = "5";
+
+    document.getElementById("product-form").dispatchEvent(new Event("submit"));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(ReportView.fetchAndRender).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls ReportView.fetchAndRender after product update", async () => {
+    ReportView = { fetchAndRender: jest.fn() };
+    ApiClient.put = jest.fn().mockResolvedValue({ data: [] });
+    ApiClient.get = jest.fn().mockResolvedValue({ data: [] });
+    setupAppState();
+    loadGlobal("inventory");
+    InventoryView.init();
+    InventoryView.editingId = "prod-123";
+
+    document.getElementById("prod-name").value = "Report Update";
+    document.getElementById("prod-cost").value = "90";
+    document.getElementById("prod-margin").value = "15";
+    document.getElementById("prod-currency").value = "USD";
+    document.getElementById("prod-stock").value = "3";
+
+    document.getElementById("product-form").dispatchEvent(new Event("submit"));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(ReportView.fetchAndRender).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls ReportView.fetchAndRender after product delete", async () => {
+    ReportView = { fetchAndRender: jest.fn() };
+    global.confirm = jest.fn().mockReturnValue(true);
+    ApiClient.delete = jest.fn().mockResolvedValue({});
+    setupAppState();
+    loadGlobal("inventory");
+    InventoryView.init();
+
+    await InventoryView.deleteProduct("1");
+
+    expect(ReportView.fetchAndRender).toHaveBeenCalledTimes(1);
   });
 });

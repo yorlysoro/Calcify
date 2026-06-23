@@ -28,7 +28,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 # Future imports from our Clean Architecture domain
@@ -65,7 +65,7 @@ def usd_to_ves_rate() -> ExchangeRate:
         base_currency_code="USD",
         target_currency_code="VES",
         rate=Decimal("36.50"),
-        date=datetime.now(),
+        date=datetime.now(timezone.utc),
     )
 
 
@@ -117,7 +117,7 @@ def test_zero_exchange_rate_raises_invalid_rate_error(
         base_currency_code="USD",
         target_currency_code="VES",
         rate=Decimal("0.00"),
-        date=datetime.now(),
+        date=datetime.now(timezone.utc),
     )
 
     with pytest.raises(InvalidExchangeRateError):
@@ -156,7 +156,7 @@ def test_conversion_with_unrelated_rate_raises_value_error(
         base_currency_code="EUR",
         target_currency_code="VES",
         rate=Decimal("40.00"),
-        date=datetime.now(),
+        date=datetime.now(timezone.utc),
     )
 
     # regex match for explicit failure context

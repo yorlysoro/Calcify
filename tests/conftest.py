@@ -32,7 +32,7 @@ from typing import Generator
 from sqlalchemy import create_engine, Engine, Connection
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
-from flask import Flask
+from flask import Flask, g
 from flask.testing import FlaskClient
 from sqlalchemy.orm import close_all_sessions
 
@@ -47,6 +47,9 @@ from infrastructure.database.models import (
     TransactionModel,
     ConfigModel,
 )
+
+from werkzeug.security import generate_password_hash
+from infrastructure.repositories.sqlalchemy_repos import SqlAlchemyConfigRepository
 
 from app import create_app
 
@@ -147,3 +150,15 @@ def client() -> Generator[FlaskClient, None, None]:
     # The SQLite :memory: database will be instantly destroyed by the Python GC
     # as the 'app' and its enclosed engine are deallocated.
     close_all_sessions()
+
+
+@pytest.fixture(scope="function")
+def seed_admin_password(client: FlaskClient) -> None:
+    """Seeds the admin password hash and a default USD currency into the DB."""
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyConfigRepository(g.db_session)
+        repo.set_value("admin_password_hash", generate_password_hash("admin123"))
+        usd = CurrencyModel(code="USD", name="US Dollar", symbol="$", is_main=True)
+        g.db_session.merge(usd)
+        g.db_session.commit()
