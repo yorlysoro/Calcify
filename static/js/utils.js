@@ -39,7 +39,7 @@ function formatMoney(value, currency) {
 function truncate(value, decimals) {
   if (decimals === undefined) decimals = 4;
   var factor = Math.pow(10, decimals);
-  return Math.round((value + Number.EPSILON) * factor) / factor;
+  return Math.round(value * factor) / factor;
 }
 
 function escapeHtml(str) {

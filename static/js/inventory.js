@@ -197,9 +197,11 @@ var InventoryView = {
       var formattedCost = formatMoney(cost, p.cost_currency_code);
       var formattedSale = formatMoney(salePrice, p.cost_currency_code);
 
+      var safeName = escapeHtml(p.name);
+      var safeCategory = escapeHtml(p.category || "-");
       this.tbodyEl.innerHTML += '<tr class="hover:bg-zinc-900/50 transition-colors group">' +
-        '<td class="px-6 py-4 font-medium text-white">' + p.name + '</td>' +
-        '<td class="px-6 py-4 text-zinc-500 text-xs">' + (p.category || "-") + '</td>' +
+        '<td class="px-6 py-4 font-medium text-white">' + safeName + '</td>' +
+        '<td class="px-6 py-4 text-zinc-500 text-xs">' + safeCategory + '</td>' +
         '<td class="px-6 py-4 font-mono text-zinc-400">' + (p.stock_quantity ?? 0) + '</td>' +
         '<td class="px-6 py-4 font-mono text-zinc-400">' + formattedCost + '</td>' +
         '<td class="px-6 py-4 font-mono text-emerald-500">+' + p.margin_percentage + '%</td>' +
@@ -211,8 +213,8 @@ var InventoryView = {
 
       this.cardsContainer.innerHTML += '<div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 flex flex-col gap-3">' +
         '<div class="flex justify-between items-start">' +
-        '<div><h4 class="text-lg font-bold text-white leading-tight">' + p.name + '</h4>' +
-        '<span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">' + (p.category || "-") + '</span></div>' +
+        '<div><h4 class="text-lg font-bold text-white leading-tight">' + safeName + '</h4>' +
+        '<span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">' + safeCategory + '</span></div>' +
         '<div class="text-right"><span class="block text-[0.65rem] text-zinc-500 uppercase tracking-widest">' + __("sale_price") + '</span>' +
         '<span class="font-mono font-bold text-emerald-400">' + formattedSale + '</span></div></div>' +
         '<div class="flex justify-between items-center bg-black rounded p-2 border border-zinc-800/50">' +

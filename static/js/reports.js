@@ -88,9 +88,10 @@ var ReportView = {
         convertedCards += '<span class="text-xs font-mono">' + cur.code + ': ' + converted.toFixed(2) + '</span>';
       });
 
+      var safeProductName = escapeHtml(productName);
       this.tbody.innerHTML += '<tr class="hover:bg-zinc-900/50 transition-colors">' +
         '<td class="px-4 py-3 font-mono text-xs text-zinc-400">' + time + '</td>' +
-        '<td class="px-4 py-3 text-white">' + productName + '</td>' +
+        '<td class="px-4 py-3 text-white">' + safeProductName + '</td>' +
         '<td class="px-4 py-3"><span class="' + (tx.transaction_type === 'IN' ? 'text-emerald-500' : 'text-red-500') + ' font-bold">' + tx.transaction_type + '</span></td>' +
         '<td class="px-4 py-3 font-mono">' + tx.quantity + '</td>' +
         '<td class="px-4 py-3 font-mono">' + formatMoney(parseFloat(tx.unit_price), tx.currency_code) + '</td>' +
@@ -102,7 +103,7 @@ var ReportView = {
 
       cardsContainer.innerHTML += '<div class="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 flex flex-col gap-2">' +
         '<div class="flex justify-between items-start">' +
-        '<h4 class="font-bold text-white">' + productName + '</h4>' +
+        '<h4 class="font-bold text-white">' + safeProductName + '</h4>' +
         '<span class="font-mono text-xs text-zinc-400">' + time + '</span></div>' +
         '<div class="grid grid-cols-2 gap-2 text-sm text-zinc-400">' +
         '<div><span class="text-[0.65rem] uppercase tracking-widest text-zinc-500">Type</span><br/>' + typeBadge + '</div>' +

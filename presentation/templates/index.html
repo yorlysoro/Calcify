@@ -250,18 +250,7 @@
     </div>
     <div class="space-y-6">
       <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
-        <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>🔒</span> {{ _("Security") }}</h3>
-        <form id="config-pwd-form" class="space-y-4">
-          <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("New PIN") }}</label>
-            <input type="password" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
-          </div>
-          <div>
-            <label class="block text-xs text-zinc-500 uppercase tracking-wide mb-1">{{ _("Confirm PIN") }}</label>
-            <input type="password" required class="w-full bg-black border border-zinc-800 rounded px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
-          </div>
-          <button type="submit" class="w-full border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white font-bold text-sm px-4 py-2 rounded transition-colors">{{ _("Update Credentials") }}</button>
-        </form>
+        <p class="text-xs text-zinc-500">{{ _("Password reset available via CLI: python reset_password.py") }}</p>
       </div>
       <div class="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
         <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-widest mb-4 flex items-center gap-2"><span>💾</span> {{ _("Data Backup") }}</h3>
