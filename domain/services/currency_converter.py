@@ -27,6 +27,15 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Currency converter service variant using inverse-rate math.
+
+Provides a static CurrencyConverter that converts through the main/base currency
+using pre-calculated inverse exchange rates. This complements the instance-based
+converter in the parent package by offering a simpler stateless API suitable for
+use-case orchestration with pre-fetched rates.
+"""
+
 from decimal import Decimal, ROUND_HALF_UP
 
 from domain.exceptions import InvalidExchangeRateError

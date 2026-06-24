@@ -27,6 +27,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""Comprehensive integration tests for all API route handlers."""
+
 import pytest
 from decimal import Decimal
 from uuid import uuid4
@@ -36,6 +38,7 @@ from flask.testing import FlaskClient
 from domain.models import Product, Transaction, CurrencyRate
 from infrastructure.repositories.sqlalchemy_repos import (
     SqlAlchemyProductRepository,
+    SqlAlchemyCurrencyRepository,
     SqlAlchemyCurrencyRateRepository,
     SqlAlchemyTransactionRepository,
 )
@@ -92,6 +95,29 @@ def test_successful_login(client: FlaskClient, seed_admin_password: None) -> Non
     with client.session_transaction() as session:
         assert session.get("authenticated") is True
         assert session.permanent is True
+
+
+def test_login_no_admin_hash_returns_500(client: FlaskClient) -> None:
+    """POST /login when no admin_password_hash exists returns 500."""
+    response = client.post("/login", json={"pin": "admin123"})
+    assert response.status_code == 500
+    data = response.get_json()
+    assert "error" in data
+
+
+def test_login_exception_handler(client: FlaskClient, seed_admin_password, monkeypatch) -> None:
+    """POST /login when an unexpected exception occurs returns 500."""
+    with client.session_transaction() as sess:
+        sess.clear()
+
+    def mock_check(*args):
+        raise RuntimeError("Unexpected failure")
+
+    monkeypatch.setattr("presentation.api.auth.check_password_hash", mock_check)
+    response = client.post("/login", json={"pin": "admin123"})
+    assert response.status_code == 500
+    data = response.get_json()
+    assert "error" in data
 
 
 def test_authorized_access_to_api(
@@ -186,6 +212,16 @@ def test_update_product_success(client: FlaskClient, seed_admin_password: None) 
         assert updated.name == "Updated Name"
         assert updated.stock_quantity == 15
         assert updated.category == "Updated Category"
+
+    # Verify IN transaction was created for stock increase (5 -> 15)
+    resp_tx = client.get("/api/v1/transactions")
+    assert resp_tx.status_code == 200
+    tx_data = resp_tx.get_json()["data"]
+    in_records = [t for t in tx_data if t["product_id"] == str(target_id) and t["transaction_type"] == "IN"]
+    assert len(in_records) == 1
+    assert in_records[0]["quantity"] == 10
+    assert in_records[0]["unit_price"] == "25.00"
+    assert in_records[0]["currency_code"] == "USD"
 
 def test_export_backup_success(client: FlaskClient, seed_admin_password: None) -> None:
     """
@@ -1117,10 +1153,10 @@ def test_create_product_default_stock_no_in_transaction(
     assert tx_resp.get_json()["data"] == []
 
 
-def test_update_product_stock_does_not_create_duplicate_in(
+def test_update_product_stock_increase_creates_in(
     client: FlaskClient, seed_admin_password: None
 ) -> None:
-    """PUT /api/v1/products/<id> changing stock does NOT create extra IN."""
+    """PUT /api/v1/products/<id> increasing stock creates IN transaction."""
     with client.session_transaction() as session:
         session["authenticated"] = True
 
@@ -1135,21 +1171,27 @@ def test_update_product_stock_does_not_create_duplicate_in(
         ))
         g.db_session.commit()
 
-    # At this point there should be 0 IN (product was saved via repo, not API)
+    # At this point there should be 0 transactions (product was saved via repo, not API)
     resp_before = client.get("/api/v1/transactions")
     assert resp_before.status_code == 200
     assert resp_before.get_json()["data"] == []
 
-    # Now update stock via PUT
+    # Now update stock via PUT (5 -> 15, delta=10)
     put_resp = client.put(f"/api/v1/products/{product_id}", json={
         "stock_quantity": 15,
     })
     assert put_resp.status_code == 200
 
-    # After update, still 0 IN (no new IN transaction)
+    # After update, 1 IN transaction with delta=10 should exist
     resp_after = client.get("/api/v1/transactions")
     assert resp_after.status_code == 200
-    assert resp_after.get_json()["data"] == []
+    tx_data = resp_after.get_json()["data"]
+    assert len(tx_data) == 1
+    assert tx_data[0]["transaction_type"] == "IN"
+    assert tx_data[0]["quantity"] == 10
+    assert tx_data[0]["product_id"] == str(product_id)
+    assert tx_data[0]["unit_price"] == "100.00"
+    assert tx_data[0]["currency_code"] == "USD"
 
 
 def test_create_currency_missing_payload(
@@ -1552,3 +1594,97 @@ def test_delete_product_exception(client, seed_admin_password, monkeypatch):
     response = client.delete(f"/api/v1/products/{uuid4()}")
     assert response.status_code == 500
     assert "error" in response.get_json()
+
+
+def test_create_rate_with_zero_value(client, seed_admin_password):
+    """POST /api/v1/rates with rate=0 returns 400 DivisionByZero."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        from flask import g
+        currency_repo = SqlAlchemyCurrencyRepository(session=g.db_session)
+        from domain.models import Currency
+        currency_repo.save(Currency(code="VES", name="Bolivar", symbol="Bs", is_main=False))
+        g.db_session.commit()
+
+    response = client.post("/api/v1/rates", json={"currency_code": "VES", "rate": "0"})
+    assert response.status_code == 400
+    data = response.get_json()
+    assert "error" in data
+
+
+def test_unauthenticated_web_redirect(client):
+    """GET / without auth redirects to /login (302) for web routes."""
+    response = client.get("/")
+    assert response.status_code == 302
+    assert response.location.endswith("/login")
+
+
+def test_update_product_stock_decrease_creates_out(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """PUT /api/v1/products/<id> decreasing stock creates OUT transaction."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    product_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyProductRepository(g.db_session)
+        repo.save(Product(
+            id=product_id, name="Decrease Stock",
+            cost_price=Decimal("50.00"), cost_currency_code="USD",
+            margin_percentage=Decimal("10.00"), stock_quantity=10,
+        ))
+        g.db_session.commit()
+
+    # Now decrease stock via PUT (10 -> 3, delta=-7)
+    put_resp = client.put(f"/api/v1/products/{product_id}", json={
+        "stock_quantity": 3,
+    })
+    assert put_resp.status_code == 200
+
+    # 1 OUT transaction with delta=7 should exist
+    resp_after = client.get("/api/v1/transactions")
+    assert resp_after.status_code == 200
+    tx_data = resp_after.get_json()["data"]
+    assert len(tx_data) == 1
+    assert tx_data[0]["transaction_type"] == "OUT"
+    assert tx_data[0]["quantity"] == 7
+    assert tx_data[0]["product_id"] == str(product_id)
+    assert tx_data[0]["unit_price"] == "50.00"
+    assert tx_data[0]["currency_code"] == "USD"
+
+
+def test_update_product_stock_no_change_no_transaction(
+    client: FlaskClient, seed_admin_password: None
+) -> None:
+    """PUT /api/v1/products/<id> with same stock creates no transaction."""
+    with client.session_transaction() as session:
+        session["authenticated"] = True
+
+    product_id = uuid4()
+    with client.application.test_request_context("/"):
+        client.application.preprocess_request()
+        repo = SqlAlchemyProductRepository(g.db_session)
+        repo.save(Product(
+            id=product_id, name="No Change Stock",
+            cost_price=Decimal("30.00"), cost_currency_code="USD",
+            margin_percentage=Decimal("15.00"), stock_quantity=8,
+        ))
+        g.db_session.commit()
+
+    # Update with same stock (8 -> 8, delta=0)
+    put_resp = client.put(f"/api/v1/products/{product_id}", json={
+        "stock_quantity": 8,
+        "name": "Still No Change",
+    })
+    assert put_resp.status_code == 200
+
+    # No transaction should be created (delta=0)
+    resp_after = client.get("/api/v1/transactions")
+    assert resp_after.status_code == 200
+    tx_data = resp_after.get_json()["data"]
+    assert tx_data == []

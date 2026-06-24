@@ -27,6 +27,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Authentication module for the Calcify application.
+
+Provides session-based PIN authentication via Flask Blueprint (auth_bp),
+the login_required decorator for route protection, and login/logout endpoints.
+"""
+
 import logging
 from functools import wraps
 from typing import Callable, Any, Tuple, Dict, Optional

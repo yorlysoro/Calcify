@@ -27,6 +27,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""Tests for UI data refresh after CRUD operations."""
+
 from uuid import uuid4
 from decimal import Decimal
 from datetime import datetime, timezone

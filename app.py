@@ -27,6 +27,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Application factory module for the Calcify application.
+
+Creates and configures a Flask 3 application instance with SQLAlchemy 2.0,
+Alembic migrations, Babel i18n, session-based authentication, and Clean
+Architecture dependency injection wiring.
+"""
+
 import os
 import sys
 import logging
@@ -63,6 +71,13 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 def get_locale() -> str:
+    """Resolves the best-matching locale for the current request.
+
+    Priority: session-stored locale > Accept-Language header > 'en'.
+
+    Returns:
+        A locale string ('en' or 'es').
+    """
     if session.get("locale"):
         return session["locale"]
     return request.accept_languages.best_match(["en", "es"]) or "en"
@@ -87,6 +102,14 @@ def create_app(config_name: Optional[str] = None) -> Flask:
 
     @app.context_processor
     def inject_i18n_globals() -> dict:
+        """Injects internationalization variables into all Jinja2 templates.
+
+        Provides the current locale and a JSON map of translated UI strings
+        for use by frontend JavaScript via the _t global.
+
+        Returns:
+            A dict with current_locale and js_translations keys.
+        """
         from flask_babel import gettext as _
         return {
             "current_locale": get_locale(),
@@ -297,6 +320,14 @@ def create_app(config_name: Optional[str] = None) -> Flask:
     # 6. Locale Switching Route
     @app.route("/api/v1/locale/<locale>", methods=["GET"])
     def set_locale(locale: str) -> tuple:
+        """Sets the session locale via a URL path segment and redirects back.
+
+        Args:
+            locale: The locale code ('en' or 'es').
+
+        Returns:
+            A redirect response to the Referer header.
+        """
         if locale in ("en", "es"):
             session["locale"] = locale
         referrer = request.headers.get("Referer", "/")
@@ -305,6 +336,13 @@ def create_app(config_name: Optional[str] = None) -> Flask:
 
     @app.route("/api/v1/locale", methods=["POST"])
     def set_locale_json() -> tuple:
+        """Sets the session locale via a JSON POST request.
+
+        Expects {"locale": "en"|"es"} in the request body.
+
+        Returns:
+            A JSON response confirming the locale change.
+        """
         payload = request.get_json()
         locale = payload.get("locale", "en") if payload else "en"
         if locale in ("en", "es"):

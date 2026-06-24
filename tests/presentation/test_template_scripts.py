@@ -27,13 +27,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Structural tests: validate JS script dependencies and i18n strings in templates.
-
-Ensures that every template loads the correct JS files in dependency order,
-preventing runtime errors like 'ApiClient is not defined' on the login page.
-Also validates gettext translatable strings for Python format specifier safety,
-preventing errors like 'unsupported format character' on render.
-"""
+"""Tests for correct script loading order and template structure."""
 
 import re
 from pathlib import Path

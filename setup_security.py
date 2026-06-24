@@ -27,6 +27,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Security initialization script for the Calcify application.
+
+Bootstraps the initial admin password hash and Flask session secret key
+in the database. Operates idempotently to avoid overwriting existing credentials.
+"""
+
 import logging
 import getpass
 import secrets

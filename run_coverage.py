@@ -27,6 +27,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Coverage runner script for the Calcify application.
+
+Executes pytest with coverage measurement across all application layers
+(domain, use_cases, infrastructure, presentation, app) and generates
+both terminal and HTML coverage reports.
+"""
+
 import subprocess
 import sys
 from pathlib import Path

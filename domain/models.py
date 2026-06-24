@@ -27,6 +27,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Domain entities for the Calcify application.
+
+Defines the core business objects: Currency, ExchangeRate, Product, CurrencyRate,
+and Transaction. All entities use @dataclass(slots=True) for memory efficiency and
+enforce strict type validation in __post_init__ to prevent float corruption and
+timezone-naive datetime propagation.
+"""
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
@@ -83,6 +91,7 @@ class ExchangeRate:
     date: datetime
 
     def __post_init__(self) -> None:
+        """Validates that rate is a Decimal and date is timezone-aware."""
         if not isinstance(self.rate, Decimal):
             raise TypeError(
                 f"ExchangeRate.rate MUST be of type decimal.Decimal, "
@@ -122,6 +131,8 @@ class Product:
             raise TypeError("Product.cost_price MUST be a decimal.Decimal.")
         if not isinstance(self.margin_percentage, Decimal):
             raise TypeError("Product.margin_percentage MUST be a decimal.Decimal.")
+        if self.stock_quantity < 0:
+            raise ValueError(f"Product.stock_quantity cannot be negative, got {self.stock_quantity}.")
 
     def calculate_sale_price(self) -> Decimal:
         """
@@ -201,6 +212,7 @@ class CurrencyRate:
     inverse_rate: Decimal = Decimal("0.0")
 
     def __post_init__(self) -> None:
+        """Validates that rate is a Decimal and created_at is timezone-aware."""
         if not isinstance(self.rate, Decimal):
             raise TypeError(
                 f"CurrencyRate.rate MUST be of type decimal.Decimal, "

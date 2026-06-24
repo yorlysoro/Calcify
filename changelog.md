@@ -5,23 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2026-06-23
 
 ### Added
 
+- **Docs:** Comprehensive Google-style Python docstrings added to all 52 `.py` files across every layer — domain (5), use_cases (4), infrastructure/database (6), infrastructure/repositories (4), presentation (6), entry points (5), and tests (21). Includes module-level, class, method, and function docstrings with `Args:`, `Returns:`, `Raises:` sections.
 - **Testing:** `test_no_float_type_hints_in_domain_services` — structural test that inspects domain service type annotations and rejects `float` for monetary parameters.
 - **Testing:** 3 new frontend tests verifying `ApiClient.put()` usage (product update, set main currency) and `ApiClient.post()` (login) — enforcing encapsulation of the HTTP layer.
-- **Testing:** Backend total raised to 159 tests; frontend total raised to 97 tests (256 combined, +3).
 - **License:** BSD 3-Clause License header added to 50 source files across all layers — 14 `.py` files (use cases, presentation web routes, auto_migrate, etc.), 24 `.js` files (all `static/js/` views, `tests/frontend/`, `tailwind.config.js`), 3 `.html` templates, and 8 `.css` files (all view-specific CSS + `input.css`). All 84 source files now carry the license header.
+- **Testing:** `test_setup_security.py` — 4 unit tests for `initialize_security` (idempotency, default password, secret key, custom password via getpass).
+- **Testing:** `test_reset_password.py` — 3 tests for `reset_admin_password` (success, mismatch, empty password).
+- **Testing:** `tests/domain/test_models.py` — 10 validation tests covering `Product`, `CurrencyRate`, `Transaction`, `ExchangeRate` `__post_init__` rejection of `float`, naive datetime, negative stock, and invalid transaction types.
+- **Testing:** `tests/presentation/test_routes.py` — 4 new route tests (rate=0 DivisionByZero, unauthenticated web redirect to /login, login with no admin hash, login exception handler).
+- **Testing:** `tests/use_cases/test_currency_conversion.py` — zero inverse rate error path test for `InvalidExchangeRateError` coverage.
+- **Testing:** `tests/presentation/test_app.py` — 2 tests covering `HTTPException` JSON response in global error handler.
+- **Testing:** Backend total raised to 183 tests (+24); frontend at 97 tests (280 combined).
+- **Infrastructure:** `_version.py` — centralized version string for dynamic export backup.
 
 ### Changed
 
 - **Docs:** `README.md` — complete rewrite in English with full project documentation (architecture, installation, usage guide, conversion logic, tests). Replaces the previous stub.
+- **Infrastructure:** `export_backup.py` now reads version dynamically from `_version.__version__` instead of hardcoded string.
 
 ### Removed
 
 - **Infrastructure:** Platform launcher scripts `iniciar_debian.sh` (Linux) and `instalar_y_correr.bat` (Windows) — setup instructions are now documented in README.md.
 - **Docs:** `estructura_calcify.txt` — Spanish project state report removed; content superseded by the new English README.md.
+- **Frontend:** Non-functional password change form removed from `index.html` (no backend endpoint exists); replaced with CLI hint.
 
 ### Fixed
 
@@ -38,9 +48,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Infrastructure:** Added `_map_to_domain()` methods to `SqlAlchemyCurrencyRepository`, `SqlAlchemyProductRepository`, and `SqlAlchemyCurrencyRateRepository` — unifying ORM-to-domain mapping and removing inline mapping duplication.
 - **Infrastructure:** Unified `Product` entity fallback defaults in `SqlAlchemyProductRepository` (`get_by_id` and `get_all` now both apply `category or "Uncategorized"` and `stock_quantity or 0`).
 - **Domain:** Added timezone awareness validation in `ExchangeRate.__post_init__` (validates `date.tzinfo`) and `CurrencyRate.__post_init__` (validates `rate` as `Decimal` and `created_at` as TZ-aware) — preventing silent data corruption from naive datetimes.
+- **Domain:** Added `stock_quantity >= 0` validation in `Product.__post_init__` to prevent negative stock in domain layer.
 - **Testing:** Removed all ORM model imports (`CurrencyModel`, `TransactionModel`, etc.) from `tests/use_cases/test_currency_conversion.py`, `tests/use_cases/test_sales.py`, `tests/presentation/test_duplication_prevention.py`, and `tests/presentation/test_ui_refresh_integration.py` — enforcing the Clean Architecture rule that no code outside `infrastructure/` imports ORM models directly.
 - **Testing:** Consolidated `seed_admin_password` fixture into `tests/conftest.py` — removed 3 duplicate definitions across presentation test files.
 - **Testing:** Updated `test_currency_converter.py` (5 tests) and `test_product.py` (2 tests) from `datetime.now()` to `datetime.now(timezone.utc)` — complying with new domain timezone validation.
+- **API:** Fixed `ZeroDivisionError` crash in `create_currency_rate` when rate=0 — added `DivisionByZero` exception handler returning 400.
+- **API:** Fixed `ZeroDivisionError` crash in `CurrencyRateRepository.save` — added zero-rate guard raising `ValueError` with descriptive message.
+- **API:** Removed `traceback.format_exc()` from `/rates/latest` error response — generic error message returned instead of stack trace (security hardening).
+- **Backup:** `export_backup.py` now includes `category`, `stock_quantity` in product serialization and `comment` in transaction serialization.
+- **Frontend:** Fixed XSS in `inventory.js` — product name and category now escaped via `escapeHtml()` in table and card views.
+- **Frontend:** Fixed XSS in `reports.js` — product name escaped via `escapeHtml()` in table headers and card titles.
+- **Frontend:** Fixed `truncate()` rounding — removed incorrect `Number.EPSILON` from rounding logic that caused floating point bias.
+- **Infrastructure:** `reset_password.py` now calls `Base.metadata.create_all(bind=engine)` before DB access to prevent crash on fresh installs.
 
 ## [0.9.0] - 2026-06-18
 

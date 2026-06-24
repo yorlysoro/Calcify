@@ -27,6 +27,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Database session management for the Calcify application.
+
+Resolves the OS-specific SQLite database path and provides the get_db_path
+utility that ensures cross-platform compatibility (Windows, macOS, Linux).
+"""
+
 import os
 import sys
 from pathlib import Path

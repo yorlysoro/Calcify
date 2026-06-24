@@ -27,3 +27,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Presentation layer for the Calcify application.
+
+Contains Flask route handlers, template rendering, and API controllers that
+bridge HTTP requests with use cases and repository implementations.
+"""
+

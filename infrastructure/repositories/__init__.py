@@ -27,3 +27,12 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Repository implementations package for the Calcify application.
+
+Provides abstract interfaces and SQLAlchemy concrete implementations for
+data access following the Repository pattern. All repositories return pure
+domain entities and accept domain entity inputs, maintaining Clean Architecture
+boundaries.
+"""
+

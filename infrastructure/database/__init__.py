@@ -27,3 +27,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Database package for the Calcify application.
+
+Manages SQLite database connectivity, ORM model definitions (SQLAlchemy 2.0),
+and schema migration orchestration via Alembic for desktop deployments.
+"""
+

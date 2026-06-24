@@ -27,6 +27,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Currency conversion use case for the Calcify application.
+
+Provides the CurrencyConversionUseCase that converts monetary amounts between
+currencies through the main/base currency using pre-calculated inverse rates.
+"""
+
 from decimal import Decimal
 from typing import Dict, Union, Optional
 
@@ -56,6 +63,12 @@ class CurrencyConversionUseCase:
         currency_repo: ICurrencyRepository,
         rate_repo: ICurrencyRateRepository,
     ) -> None:
+        """Initializes the conversion use case with repository dependencies.
+
+        Args:
+            currency_repo: Repository for currency lookup operations.
+            rate_repo: Repository for exchange rate retrieval.
+        """
         self._currency_repo: ICurrencyRepository = currency_repo
         self._rate_repo: ICurrencyRateRepository = rate_repo
 
@@ -65,6 +78,21 @@ class CurrencyConversionUseCase:
         target_currency_code: str,
         amount: Decimal,
     ) -> Dict[str, Union[str, Decimal]]:
+        """Converts an amount from source to target currency via the main currency.
+
+        Args:
+            source_currency_code: ISO 4217 code of the source currency.
+            target_currency_code: ISO 4217 code of the target currency.
+            amount: The monetary amount to convert.
+
+        Returns:
+            A dictionary with keys: source_currency_code, target_currency_code,
+            amount, result, and rate.
+
+        Raises:
+            ValueError: If the main currency is not configured, either currency
+                is unknown, or exchange rates are missing.
+        """
         source_code: str = source_currency_code.upper()
         target_code: str = target_currency_code.upper()
 

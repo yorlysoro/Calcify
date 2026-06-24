@@ -27,3 +27,12 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Use cases package for the Calcify application.
+
+Contains application-specific business logic that orchestrates domain entities
+and infrastructure repositories. Each use case fulfills a single user-facing
+operation (sales registration, currency conversion, data export) following the
+Clean Architecture Interactor pattern.
+"""
+

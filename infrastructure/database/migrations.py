@@ -27,6 +27,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Programmatic Alembic migration runner for the Calcify application.
+
+Provides the run_migrations function that executes Alembic upgrades to the
+latest schema revision head, designed for packaged desktop environments where
+CLI access is not available.
+"""
+
 import logging
 from pathlib import Path
 from alembic.config import Config

@@ -27,7 +27,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Unit tests for infrastructure/database/migrations.py."""
+"""Tests for the programmatic Alembic migration runner."""
 
 from pathlib import Path
 import pytest

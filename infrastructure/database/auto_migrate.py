@@ -27,6 +27,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Automatic migration bootstrapper for the Calcify application.
+
+Provides the bootstrap_migrations function that initializes Alembic,
+manages legacy artifact migration to the user data directory, auto-generates
+revisions, applies schema changes, and handles stale revision recovery.
+"""
+
 import os
 import shutil
 import logging

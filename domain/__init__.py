@@ -27,3 +27,11 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Domain layer for the Calcify application.
+
+Contains pure business entities and domain services with zero external
+framework dependencies. This is the innermost layer of the Clean Architecture,
+enforcing all financial validation rules and type safety constraints.
+"""
+

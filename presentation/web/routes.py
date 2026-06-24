@@ -27,6 +27,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Web route handlers for the Calcify application.
+
+Serves the main Single Page Application dashboard and the login page
+via Flask server-side rendered templates protected by login_required.
+"""
+
 from flask import Blueprint, render_template, Response
 
 from presentation.api.auth import login_required
@@ -37,9 +44,21 @@ web_bp: Blueprint = Blueprint("web", __name__)
 @web_bp.route("/", methods=["GET"])
 @login_required
 def index() -> Response:
+    """Renders the main SPA dashboard.
+
+    Protected by login_required — unauthenticated users are redirected to /login.
+
+    Returns:
+        The index.html template rendered as an HTTP response.
+    """
     return render_template("index.html")
 
 
 @web_bp.route("/login", methods=["GET"])
 def login() -> Response:
+    """Renders the login page.
+
+    Returns:
+        The login.html template rendered as an HTTP response.
+    """
     return render_template("login.html")

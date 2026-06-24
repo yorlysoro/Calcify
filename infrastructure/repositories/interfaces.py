@@ -27,6 +27,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Abstract repository interfaces for the Calcify application.
+
+Defines the contract that all concrete repository implementations must satisfy,
+enabling dependency inversion and testability through mock/stub substitution.
+"""
+
 from abc import ABC, abstractmethod
 from typing import Optional, List
 from uuid import UUID
@@ -76,6 +83,7 @@ class IProductRepository(ABC):
     
     @abstractmethod
     def get_all(self) -> List[Product]:
+        """Retrieves all Product domain entities."""
         pass
     
     @abstractmethod
@@ -164,5 +172,6 @@ class ITransactionRepository(ABC):
     
     @abstractmethod
     def get_all(self) -> List[Transaction]:
+        """Retrieves all Transaction entities ordered by creation date descending."""
         pass
 

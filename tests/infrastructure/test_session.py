@@ -27,7 +27,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Unit tests for infrastructure/database/session.py platform branching."""
+"""Tests for the OS-specific database path resolution."""
 
 from pathlib import Path
 from infrastructure.database.session import get_db_path

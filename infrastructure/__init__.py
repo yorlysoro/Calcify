@@ -26,3 +26,11 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+"""
+Infrastructure layer for the Calcify application.
+
+Provides concrete implementations of database connectivity, ORM models,
+schema migrations, and repository adapters that bridge the domain layer
+with external frameworks (SQLAlchemy, Alembic).
+"""

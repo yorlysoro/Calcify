@@ -27,6 +27,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Project scaffold generator for the Calcify application.
+
+Creates the Clean Architecture directory structure with all required
+packages when initializing a new project from scratch.
+"""
+
 import logging
 from pathlib import Path
 from typing import List

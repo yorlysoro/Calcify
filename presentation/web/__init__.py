@@ -27,3 +27,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Web routes package for the Calcify application.
+
+Contains the web Blueprint (web_bp) serving the main SPA dashboard (index.html)
+and the login page (login.html) with server-side template rendering.
+"""
+

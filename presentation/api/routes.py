@@ -27,12 +27,20 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+API route handlers for the Calcify application.
+
+Defines all RESTful endpoints under the /api/v1/ Blueprint, including CRUD
+operations for currencies, products, exchange rates, and transactions, as
+well as sales registration, currency conversion, and backup export.
+"""
+
 import traceback
 from presentation.api.auth import login_required
 import logging
 from typing import Optional, Tuple, Dict, Any, List, Union
 from uuid import UUID, uuid4
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, DivisionByZero
 
 from flask import Blueprint, request, jsonify, g, Response
 from flask_babel import _
@@ -294,6 +302,8 @@ def update_product(product_id: str) -> Tuple[Response, int]:
         if not payload:
             return jsonify({"error": _("Invalid or missing JSON payload.")}), 400
 
+        old_stock: int = product.stock_quantity
+
         if "name" in payload:
             product.name = str(payload["name"])
         if "category" in payload:
@@ -308,6 +318,21 @@ def update_product(product_id: str) -> Tuple[Response, int]:
             product.stock_quantity = int(payload["stock_quantity"])
 
         repo.save(product)
+
+        stock_delta: int = product.stock_quantity - old_stock
+        if stock_delta != 0:
+            tx_repo = SqlAlchemyTransactionRepository(session=g.db_session)
+            tx = Transaction(
+                id=uuid4(),
+                product_id=product.id,
+                transaction_type="IN" if stock_delta > 0 else "OUT",
+                quantity=abs(stock_delta),
+                unit_price=product.cost_price,
+                currency_code=product.cost_currency_code,
+                created_at=datetime.now(timezone.utc),
+            )
+            tx_repo.save(tx)
+
         g.db_session.commit()
 
         return jsonify({
@@ -519,6 +544,8 @@ def create_currency_rate() -> Tuple[Response, int]:
         return jsonify({"error": _("Missing required field: %(field)s", field=str(e))}), 400
     except InvalidOperation:
         return jsonify({"error": _("Rate must be a valid decimal number.")}), 400
+    except DivisionByZero:
+        return jsonify({"error": _("Exchange rate cannot be zero.")}), 400
     except Exception as e:
         g.db_session.rollback()
         logger.error(f"Failed to create rate: {str(e)}")
@@ -548,9 +575,8 @@ def get_latest_currency_rates() -> Tuple[Response, int]:
         return jsonify({"data": response_data}), 200
 
     except Exception as e:
-        traceback.print_exc()
-        logger.error(f"Failed to fetch latest rates: {str(e)}")
-        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+        logger.error(f"Failed to fetch latest rates: {e}")
+        return jsonify({"error": _("Internal server error while fetching rates.")}), 500
 
 
 @api_bp.route("/convert", methods=["POST"])

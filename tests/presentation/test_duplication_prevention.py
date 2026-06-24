@@ -27,11 +27,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Integration tests: verify no duplicate records from UI misbehavior patterns.
-
-Ensures that common frontend bugs (double initModal, stale select states)
-do not result in duplicate data at the API level.
-"""
+"""Tests for preventing duplicate entity creation in API routes."""
 
 from uuid import uuid4
 import pytest

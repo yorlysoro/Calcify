@@ -27,6 +27,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+SQLAlchemy ORM models for the Calcify application.
+
+Defines the database schema using SQLAlchemy 2.0 Declarative mapping with
+strict Numeric types for financial precision. Each model maps to a domain
+entity while remaining isolated from domain layer imports.
+"""
+
 from decimal import Decimal
 from uuid import UUID
 from datetime import datetime, timezone

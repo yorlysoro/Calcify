@@ -27,10 +27,14 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""Tests for domain entity validation and business logic."""
+
 import pytest
 from uuid import uuid4
 from decimal import Decimal
-from domain.models import Product
+from datetime import datetime, timezone
+from domain.models import Product, CurrencyRate, Transaction, ExchangeRate
+
 
 def test_product_entity_includes_category_with_default_value() -> None:
     """
@@ -39,7 +43,6 @@ def test_product_entity_includes_category_with_default_value() -> None:
     """
     test_id = uuid4()
     
-    # Intentionally omitting 'category' from kwargs
     product = Product(
         id=test_id,
         name="Harina PAN",
@@ -48,5 +51,55 @@ def test_product_entity_includes_category_with_default_value() -> None:
         margin_percentage=Decimal("30.00")
     )
     
-    assert hasattr(product, 'category'), "Product entity is missing the 'category' attribute."
-    assert product.category == "Uncategorized", "Default category fallback failed."
+    assert hasattr(product, 'category')
+    assert product.category == "Uncategorized"
+
+
+def test_product_rejects_float_for_cost_price() -> None:
+    with pytest.raises(TypeError, match="Product.cost_price MUST be a decimal.Decimal."):
+        Product(id=uuid4(), name="Test", cost_price=1.0, cost_currency_code="USD", margin_percentage=Decimal("10.00"))
+
+
+def test_product_rejects_float_for_margin_percentage() -> None:
+    with pytest.raises(TypeError, match="Product.margin_percentage MUST be a decimal.Decimal."):
+        Product(id=uuid4(), name="Test", cost_price=Decimal("1.00"), cost_currency_code="USD", margin_percentage=10.0)
+
+
+def test_product_rejects_negative_stock() -> None:
+    with pytest.raises(ValueError, match="Product.stock_quantity cannot be negative"):
+        Product(id=uuid4(), name="Test", cost_price=Decimal("1.00"), cost_currency_code="USD", margin_percentage=Decimal("10.00"), stock_quantity=-1)
+
+
+def test_currency_rate_rejects_float_for_rate() -> None:
+    with pytest.raises(TypeError, match="CurrencyRate.rate MUST be of type decimal.Decimal"):
+        CurrencyRate(id=uuid4(), currency_code="USD", rate=500.0, created_at=datetime.now(timezone.utc))
+
+
+def test_currency_rate_rejects_naive_datetime() -> None:
+    with pytest.raises(ValueError, match="CurrencyRate.created_at must be timezone-aware"):
+        CurrencyRate(id=uuid4(), currency_code="USD", rate=Decimal("500"), created_at=datetime.now())
+
+
+def test_transaction_rejects_float_for_unit_price() -> None:
+    with pytest.raises(TypeError, match="Transaction.unit_price MUST be a Decimal"):
+        Transaction(id=uuid4(), product_id=uuid4(), transaction_type="OUT", quantity=1, unit_price=10.0, currency_code="USD", created_at=datetime.now(timezone.utc))
+
+
+def test_transaction_rejects_invalid_type() -> None:
+    with pytest.raises(ValueError, match="Invalid transaction_type"):
+        Transaction(id=uuid4(), product_id=uuid4(), transaction_type="INVALID", quantity=1, unit_price=Decimal("10.00"), currency_code="USD", created_at=datetime.now(timezone.utc))
+
+
+def test_transaction_rejects_naive_datetime() -> None:
+    with pytest.raises(ValueError, match="Transaction.created_at MUST be a timezone-aware"):
+        Transaction(id=uuid4(), product_id=uuid4(), transaction_type="IN", quantity=1, unit_price=Decimal("10.00"), currency_code="USD", created_at=datetime.now())
+
+
+def test_exchange_rate_rejects_float_for_rate() -> None:
+    with pytest.raises(TypeError, match="ExchangeRate.rate MUST be of type decimal.Decimal"):
+        ExchangeRate(base_currency_code="USD", target_currency_code="EUR", rate=1.2, date=datetime.now(timezone.utc))
+
+
+def test_exchange_rate_rejects_naive_datetime() -> None:
+    with pytest.raises(ValueError, match="ExchangeRate.date must be timezone-aware"):
+        ExchangeRate(base_currency_code="USD", target_currency_code="EUR", rate=Decimal("1.2"), date=datetime.now())

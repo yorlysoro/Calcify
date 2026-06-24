@@ -27,3 +27,11 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+API package for the Calcify application.
+
+Contains the REST API blueprint (api_bp) at /api/v1/ with protected endpoints
+for CRUD operations on currencies, products, rates, and transactions, as well
+as authentication (auth_bp) using session-based PIN login.
+"""
+

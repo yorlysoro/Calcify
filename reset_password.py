@@ -27,6 +27,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Password reset utility for the Calcify application.
+
+Provides an interactive CLI script to securely reset the master admin PIN
+with confirmation prompts and bcrypt-style hashing via Werkzeug.
+"""
+
 import sys
 import logging
 import getpass
@@ -35,6 +42,7 @@ from sqlalchemy.orm import Session
 from werkzeug.security import generate_password_hash
 
 # Infrastructure imports
+from infrastructure.database.models import Base
 from infrastructure.database.session import get_db_path
 from infrastructure.repositories.sqlalchemy_repos import SqlAlchemyConfigRepository
 
@@ -82,6 +90,7 @@ def reset_admin_password(app_name: str = "Calcify") -> None:
         # 1. Resolve Path and Initialize Engine
         db_uri: str = f"sqlite:///{get_db_path(app_name).as_posix()}"
         engine: Engine = create_engine(db_uri)
+        Base.metadata.create_all(bind=engine)
 
         # 2. Database Transaction using Context Manager
         with Session(engine) as session:

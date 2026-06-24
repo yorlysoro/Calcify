@@ -27,7 +27,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Tests for app.py uncovered branches: locale, error handler, production path."""
+"""Tests for the Flask application factory (create_app)."""
 
 from pathlib import Path
 from flask import session
@@ -166,3 +166,28 @@ def test_create_app_production_path(monkeypatch):
 
     assert not app.config["TESTING"]
     assert app.secret_key == "test_secret_123"
+
+
+def test_http_exception_handler_returns_json(client):
+    """An HTTPException (e.g. 404) returns JSON via the global error handler."""
+    response = client.get("/nonexistent-route")
+    assert response.status_code == 404
+    data = response.get_json()
+    assert "error" in data
+    assert "message" in data
+
+
+def test_global_exception_handler_with_httpexception(client):
+    """Trigger HTTPException through Flask's abort."""
+    app = client.application
+
+    @app.route("/trigger-http-exc")
+    def trigger_http_exc():
+        from werkzeug.exceptions import NotFound
+        raise NotFound("Custom 404 description")
+
+    response = client.get("/trigger-http-exc")
+    assert response.status_code == 404
+    data = response.get_json()
+    assert data["error"] == "Not Found"
+    assert data["message"] == "Custom 404 description"

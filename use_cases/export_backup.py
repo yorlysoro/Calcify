@@ -27,9 +27,17 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Backup export use case for the Calcify application.
+
+Provides the ExportBackupUseCase that aggregates all system entities into a
+single JSON-serializable dictionary for backup and restore operations.
+"""
+
 import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, List
+from _version import __version__
 
 from domain.models import Currency, Product, Transaction
 from infrastructure.repositories.interfaces import (
@@ -93,9 +101,11 @@ class ExportBackupUseCase:
             {
                 "id": str(p.id),
                 "name": p.name,
-                "cost_price": str(p.cost_price),  # Decimal to string
+                "cost_price": str(p.cost_price),
                 "cost_currency_code": p.cost_currency_code,
-                "margin_percentage": str(p.margin_percentage) # Decimal to string
+                "margin_percentage": str(p.margin_percentage),
+                "category": p.category,
+                "stock_quantity": p.stock_quantity,
             }
             for p in products
         ]
@@ -106,16 +116,17 @@ class ExportBackupUseCase:
                 "product_id": str(t.product_id),
                 "transaction_type": t.transaction_type,
                 "quantity": t.quantity,
-                "unit_price": str(t.unit_price),  # Decimal to string
+                "unit_price": str(t.unit_price),
                 "currency_code": t.currency_code,
-                "created_at": t.created_at.isoformat()  # Datetime to ISO 8601 string
+                "created_at": t.created_at.isoformat(),
+                "comment": t.comment,
             }
             for t in transactions
         ]
 
         # 3. Construct the standardized export payload
         export_payload: Dict[str, Any] = {
-            "version": "1.0.0",
+            "version": __version__,
             "exported_at": datetime.now(timezone.utc).isoformat(),
             "data": {
                 "currencies": serialized_currencies,

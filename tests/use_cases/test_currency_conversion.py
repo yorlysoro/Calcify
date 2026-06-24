@@ -27,6 +27,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""Tests for the CurrencyConversionUseCase."""
+
 import pytest
 from decimal import Decimal
 from uuid import uuid4
@@ -40,6 +42,7 @@ from infrastructure.repositories.sqlalchemy_repos import (
     SqlAlchemyCurrencyRepository,
     SqlAlchemyCurrencyRateRepository,
 )
+
 
 
 
@@ -243,3 +246,29 @@ def test_raises_error_when_no_rate_for_target(db_session: Session) -> None:
 
     with pytest.raises(ValueError, match="No exchange rate found for target"):
         use_case.execute("COP", "CLP", Decimal("10"))
+
+
+def test_raises_error_when_rate_is_zero(db_session: Session) -> None:
+    """A zero inverse rate should raise ValueError via InvalidExchangeRateError."""
+    db_session.execute(text("DELETE FROM currencies"))
+    currency_repo = SqlAlchemyCurrencyRepository(db_session)
+    currency_repo.save(Currency(code="GBP", name="Pound", symbol="\u00a3", is_main=True))
+    currency_repo.save(Currency(code="JPY", name="Yen", symbol="\u00a5", is_main=False))
+    db_session.commit()
+
+    now = datetime.now(timezone.utc)
+    rate_repo = SqlAlchemyCurrencyRateRepository(db_session)
+    rate_repo.save(CurrencyRate(id=uuid4(), currency_code="JPY", rate=Decimal("500"), created_at=now))
+    db_session.commit()
+
+    use_case = CurrencyConversionUseCase(
+        currency_repo=currency_repo,
+        rate_repo=rate_repo,
+    )
+
+    from unittest.mock import patch
+    with patch("use_cases.currency_conversion.CurrencyConverter.convert") as mock_convert:
+        from domain.exceptions import InvalidExchangeRateError
+        mock_convert.side_effect = InvalidExchangeRateError("Exchange rate cannot be zero.")
+        with pytest.raises(ValueError, match="Exchange rate cannot be zero"):
+            use_case.execute("GBP", "JPY", Decimal("10"))
