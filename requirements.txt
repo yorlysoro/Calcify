@@ -16,7 +16,7 @@ pluggy==1.6.0
 proxy_tools==0.1.0
 Pygments==2.20.0
 pytest==9.0.3
-pytest-cov==6.1.1
+pytest-cov==7.1.0
 pywebview==6.2.1
 SQLAlchemy==2.0.49
 typing_extensions==4.15.0
